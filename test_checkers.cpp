@@ -4,6 +4,8 @@
  * Created on Mar 05, 2014
  */
 
+#include <cbc.h>
+
 #include "./checkers.hpp"
 #include <iostream>
 
@@ -13,6 +15,10 @@ int main() {
   Board b, c(Board::empty);
   string input;
   int x, y;
+
+  cout << "Full cross-compile" << endl;
+  cout << "Trying the motor: " << endl;
+  mav(0,750);
 
   cout<<"* Board b:\n" << b << endl;
 

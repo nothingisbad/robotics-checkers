@@ -1,1 +1,4 @@
-test_checkers
+cbc_executable
+libcbc
+to-usb.sh
+*.o
