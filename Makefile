@@ -1,9 +1,10 @@
 INCLUDES = -I../userlib/libcbc/src/
 FLAGS = -Wall -std=c++0x
 
-CROSS_CPP = arm-unknown-linux-gnueabi-g++ $(FLAGS) $(INCLUDES)
+CROSS_CPP = arm-linux-gnueabi-g++ $(FLAGS) $(INCLUDES)
 
 CPP = g++ $(FLAGS) $(INCLUDES)
+
 #CPP = clang -stdlib=libc++ -lc++ $(FLAGS) $(INCLUDES)
 
 CROSS_LIBS_DIR = ../cross-libs
