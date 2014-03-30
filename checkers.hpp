@@ -8,7 +8,10 @@
  * A basic checkers game board, with no logic to speak of.
  */
 
+#include <iostream>
 #include <ostream>
+
+#include "./points.hpp"
 
 class Board {
 public:
@@ -28,20 +31,37 @@ public:
    * @param column: column to place the piece
    */
   void place(State color, int row, int column) { _board[row][column] = color; }
+  void place(State color, const iPair& p) { _board[p._x][p._y] = color; }
 
-  /**
-   * Query the state of a specific row/column
-   */
-  State square_state(int row, int column) const { return _board[row][column]; }
+  void move(const iPair& src, const iPair& dst) {
+    State piece = square_state(src);
+    std::cout <<"Type " << piece << " From: " << src << " To: " << dst << std::endl;
+    place(piece, dst);
+    place(empty, src);
+  }
 
   /**************/
   /* Predicates */
   /**************/
+#define USE_iPair(fn_name) int fn_name(iPair p) { return fn_name(p._y, p._x); }
+
+  /* Query the state of a specific row/column */
+  State square_state(int row, int column) const { return _board[row][column]; }
+  State square_state(iPair p) const { return _board[p._x][p._y]; }
+
   int is_red(int row, int column) const { return (square_state(row, column) & State::red) == State::red; }
+  USE_iPair(is_red);
+
+  int is_black(int row, int column) const
+  { return (square_state(row, column) & State::black) == State::black; }
+  USE_iPair(is_black);
 
   int is_king(int row, int column) const { return (square_state(row, column) & king) == king; }
+  USE_iPair(is_king);
 
   int is_empty(int row, int column) const { return (square_state(row,column) == empty); }
+  USE_iPair(is_empty);
+#undef USE_iPair
 
   /**************/
   /* Comparison */
@@ -69,7 +89,6 @@ public:
   /* comparse the current board to another, returns true if other is reachable from
      this */
   bool is_legal_subsiquent(const Board& other) const { return false; }
-
 
   /****************/
   /* Constructors */
@@ -125,7 +144,7 @@ public:
       out << "____";
     out << endl;
 
-    for(int i = 0; i < _rows; ++i) {
+    for(int i = _rows - 1; i >= 0; --i) {
       out << "|";
       if(0 == (i % 2)) out << "_|";
 

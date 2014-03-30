@@ -15,12 +15,7 @@ int main() {
   Board b, c(Board::empty);
   string input;
   int x, y;
-
-  cout << "Full cross-compile" << endl;
-  cout << "Trying the motor: " << endl;
-  mav(0,750);
-
-  cout<<"* Board b:\n" << b << endl;
+  iPair src, dst;
 
   c.place(Board::red,0,0);
   c.place(Board::black,3,2);
@@ -36,6 +31,15 @@ int main() {
     if("at" == input) {
       cin >> x; cin >> y;
       cout << b.square_state(x,y) << endl;
+    }
+
+    else if("move" == input) {
+      cin >> x; cin >> y;
+      src = iPair(x,y);
+      cin >> x; cin >> y;
+      dst = iPair(x,y);
+
+      b.move(src,dst);
     }
 
     else if("quit" == input) {

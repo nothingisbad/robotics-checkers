@@ -1,4 +1,6 @@
 cbc_executable
 libcbc
 to-usb.sh
+gl_checkers
+test_checkers
 *.o
