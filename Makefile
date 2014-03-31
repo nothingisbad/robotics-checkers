@@ -17,7 +17,7 @@ test_checkers: checkers.hpp test_checkers.cpp
 	$(CXX) -o test_checkers test_checkers.cpp
 
 gl_checkers: *.hpp *.cpp
-	$(CXX) -std=c++11 -o gl_checkers GUI.cpp -lGL -lGLU `sdl-config --cflags --libs`
+	$(CXX) -std=c++11 -o gl_checkers gl_checkers.cpp -lGL -lGLU `sdl-config --cflags --libs`
 
 cbc_executable: *.hpp *.cpp
 	$(CROSS_CXX) -o cbc_executable test_checkers.cpp $(CROSS_LIBS)

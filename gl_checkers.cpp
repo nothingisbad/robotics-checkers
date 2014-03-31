@@ -19,7 +19,7 @@
 #include "./checkers.hpp"
 
 /* screen width, height, and bit depth */
-#define SCREEN_BPP     16
+// 
 
 using namespace std;
 using namespace std::chrono;
@@ -50,17 +50,6 @@ public:
   }
 };
 
-/* This is our SDL surface */
-SDL_Surface *surface;
-
-/* function to release/destroy our resources and restoring the old desktop */
-void quit( int returnCode ) {
-    /* clean up the window */
-    SDL_Quit( );
-
-    /* and exit appropriately */
-    exit( returnCode );
-}
 
 /* function to handle key press events */
 void handleKeyPress( SDL_keysym *keysym ) {
@@ -80,81 +69,6 @@ void handleKeyPress( SDL_keysym *keysym ) {
 	    break;
 	}
     return;
-}
-
-/**
- * Adapted from the NeHe openGL tutorials
- * 
- * @param videoInfo:
- * @param screen:
- * @param videoFlags:
- */
-void initSDL(const SDL_VideoInfo *& videoInfo, screen_data & screen, int &videoFlags) {
-  using namespace std;
-  /* initialize SDL */
-  if ( SDL_Init( SDL_INIT_VIDEO ) < 0 )
-    cerr << "Video initialization failed: " << SDL_GetError( ) << endl;
-
-  /* Fetch the video info */
-  videoInfo = SDL_GetVideoInfo( );
-
-  if ( !videoInfo )
-    std::cerr<<"Video query failed: "<<SDL_GetError( )<<std::endl;
-
-
-  /* the flags to pass to SDL_SetVideoMode */
-  videoFlags  = SDL_OPENGL;          /* Enable OpenGL in SDL */
-  videoFlags |= SDL_GL_DOUBLEBUFFER; /* Enable double buffering */
-  videoFlags |= SDL_HWPALETTE;       /* Store the palette in hardware */
-  videoFlags |= SDL_RESIZABLE;       /* Enable window resizing */
-
-  /* This checks to see if surfaces can be stored in memory */
-  if ( videoInfo->hw_available )
-    videoFlags |= SDL_HWSURFACE;
-  else
-    videoFlags |= SDL_SWSURFACE;
-
-  /* This checks if hardware blits can be done */
-  if ( videoInfo->blit_hw )
-    videoFlags |= SDL_HWACCEL;
-
-  /* Sets up OpenGL double buffering */
-  SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
-
-  /* get a SDL surface */
-  surface = SDL_SetVideoMode( screen.pixWidth, screen.pixHeight, SCREEN_BPP,
-			      videoFlags );
-
-  /* Verify there is a surface */
-  if ( !surface ) {
-    std::cerr<<"Video mode set failed: "<<SDL_GetError( )<<std::endl;
-    quit( 1 );
-  }
-}
-
-/* general OpenGL initialization function */
-int initGL( void ) {
-
-    /* Enable smooth shading */
-    glShadeModel( GL_SMOOTH );
-
-    /* Set the background black */
-    glClearColor( 0.0f, 0.0f, 0.0f, 0.0f );
-
-    /* Depth buffer setup */
-    glClearDepth( 1.0f );
-
-    /* todo: Everything I'm rendering is co-planar.  Can I just ditch this code? */
-    /* Enables Depth Testing */
-    glEnable( GL_DEPTH_TEST );
-
-    /* The Type Of Depth Test To Do */
-    glDepthFunc( GL_LEQUAL );
-
-    /* Really Nice Perspective Calculations */
-    glHint( GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST );
-
-    return( 1 );
 }
 
 inline void draw_square() {
@@ -194,34 +108,23 @@ class MoveSelection {
   bool _selected, _move;
   Camera &_camera;
 
-
+  /* Given a point in the scene (on the game-board plane) pick the
+     corrosponding square on the checker's board. */
   iPair to_int(const dPair& p) const {
-    double x, y, offset = 2.0;
-    cout << "to_int from " << p << endl;
-    cout << "  camera: " << _camera << endl;
+    double offset;
+    int i, j;
 
-    /* this is stupid, but I'm tired of thinking.
-       I should be able to just divide, but it's not working so great. */
-    for(int i = 0; i < Board::_rows; ++i) {
-      for(int j = 0; j < Board::_columns; ++j) {
+    i = (p._y + _camera._y + 1) / 2;
 
-	if(i % 2 == 0)
-	  offset = 0.0;
-	else
-	  offset = 2.0;
+    if(i % 2 == 1)
+      offset = 2.0;
+    else
+      offset = 0.0;
 
-	x = ((double)4 * j) + offset - _camera._x;
-	y = ((double)2 * i) - _camera._y;
-
-	if((p > dPair(x - 1, y -1)) && (p < dPair(x + 1, y + 1))) {
-	  cout << "to_int: " << iPair(i,j) << endl;
-	  return iPair(i,j);
-	}
-      }
-    }
-    cout << "to_int can't find an in range match: " << endl;
-    return iPair(-1,-1);
+    j = (p._x - offset + _camera._x + 1) / 4.0;
+    return iPair(i,j); 
   }
+
 public:
   MoveSelection(Camera &camera) : _selected(false) , _move(false) , _camera(camera) {}
 
@@ -242,8 +145,6 @@ public:
 
   iPair src() const { return to_int(_src); }
   iPair dst() const { return to_int(_dst); }
-  /* dPair src() const { return _src; } */
-  /* dPair dst() const { return _dst; } */
 
   bool do_move() { return _move; }
   bool selected() { return _selected; }
@@ -261,22 +162,17 @@ int main( int argc, char **argv ) {
     //game grid and logic
     Board board;
 
-    /* Flags to pass to SDL_SetVideoMode */
-    int videoFlags;
-
     /* main loop variable */
     bool done = false;
 
     /* used to collect events */
     SDL_Event event;
 
-    /* this holds some info about our display */
-    const SDL_VideoInfo *videoInfo;
 
     /* whether or not the window is active */
     bool isActive = true;
 
-    screen_data screen;
+    ScreenData screen;
 
     //mouse:
     dPair dMouse, mouseOffset;
@@ -294,15 +190,6 @@ int main( int argc, char **argv ) {
 
     //selection
     MoveSelection selector(camera);
-
-
-    initSDL( videoInfo, screen, videoFlags );
-
-    /* initialize OpenGL */
-    initGL( );
-
-    /* resize the initial window */
-    screen.resize_window(screen.pixWidth, screen.pixHeight );
 
     //setup the camera
     grid_center._x = (double)(board._columns / 2) - 1.0;
@@ -341,14 +228,6 @@ int main( int argc, char **argv ) {
 	  break; 
 
 	case SDL_VIDEORESIZE:
-	  /* handle resize event */
-	  surface = SDL_SetVideoMode( event.resize.w,
-				      event.resize.h,
-				      16, videoFlags );
-	  if ( !surface ) {
-	    std::cerr<<"Could not get a surface after resize: "<<SDL_GetError( )<<std::endl;
-	    quit( 1 );
-	  }
 	  screen.resize_window(event.resize.w, event.resize.h );
 
 	  break;

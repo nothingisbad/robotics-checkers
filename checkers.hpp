@@ -8,7 +8,7 @@
  * A basic checkers game board, with no logic to speak of.
  */
 
-#include <iostream>
+// #include <iostream>
 #include <ostream>
 
 #include "./points.hpp"
@@ -35,7 +35,6 @@ public:
 
   void move(const iPair& src, const iPair& dst) {
     State piece = square_state(src);
-    std::cout <<"Type " << piece << " From: " << src << " To: " << dst << std::endl;
     place(piece, dst);
     place(empty, src);
   }
