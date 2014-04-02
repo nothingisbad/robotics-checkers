@@ -8,6 +8,9 @@
  */
 
 #include <iostream>
+#include <vector>
+#include <functional>
+
 #include "./points.hpp"
 
 #define SCREEN_BPP     16
@@ -15,7 +18,7 @@
 class Camera : public dTriplet {
 public:
   bool _is_absolute;
-  Camera() : dTriplet(0,0,0), _is_absolute(false) {}
+  Camera(double x, double y, double z) : dTriplet(x,y,z), _is_absolute(false) {}
 };
 
 /* function to release/destroy our resources and restoring the old desktop */
@@ -27,69 +30,86 @@ void quit( int returnCode ) {
     exit( returnCode );
 }
 
-class ScreenData {
-  /* This is our SDL surface */
-  SDL_Surface *_surface;
-
-  /* Flags to pass to SDL_SetVideoMode */
-  int videoFlags;
-
-  /* this holds some info about our display */
-  const SDL_VideoInfo *videoInfo;
-
+struct ScreenData {
   /**
-   * Adapted from the NeHe openGL tutorials
-   * 
-   * @param videoInfo:
-   * @param screen:
-   * @param videoFlags:
+   * Adapted from the NeHe openGL tutorials and sdl2_opengl.c gist
    */
-  void initSDL(const SDL_VideoInfo *& videoInfo, int &videoFlags) {
-    using namespace std;
-    /* initialize SDL */
-    if ( SDL_Init( SDL_INIT_VIDEO ) < 0 )
-      cerr << "Video initialization failed: " << SDL_GetError( ) << endl;
+  SDL_Window* window;
+  SDL_Renderer* renderer;
 
-    /* Fetch the video info */
-    videoInfo = SDL_GetVideoInfo( );
+  // public:
+  typedef std::function<void (ScreenData&)> ResizeCallback;
+  typedef std::vector<ResizeCallback> ResizeVec;
+  ResizeVec _resize_callback;
 
-    if ( !videoInfo )
-      std::cerr<<"Video query failed: "<<SDL_GetError( )<<std::endl;
+  /* so, to project a mouse click onto the game-board plane I can use the center of the screen in terms of pixles and
+     center in terms of the OpenGL coordinates to calibrate my offsets */
+  double dHalf_x, dHalf_y;
+  int iHalf_x, iHalf_y;
+
+  int pixWidth, pixHeight;
+  double glWidth, glHeight;
+  double aspectRatio;
+
+  constexpr static double dFOV = 0.275; //field of view angle factor
 
 
-    /* the flags to pass to SDL_SetVideoMode */
-    videoFlags  = SDL_OPENGL;          /* Enable OpenGL in SDL */
-    videoFlags |= SDL_GL_DOUBLEBUFFER; /* Enable double buffering */
-    videoFlags |= SDL_HWPALETTE;       /* Store the palette in hardware */
-    videoFlags |= SDL_RESIZABLE;       /* Enable window resizing */
-
-    /* This checks to see if surfaces can be stored in memory */
-    if ( videoInfo->hw_available )
-      videoFlags |= SDL_HWSURFACE;
-    else
-      videoFlags |= SDL_SWSURFACE;
-
-    /* This checks if hardware blits can be done */
-    if ( videoInfo->blit_hw )
-      videoFlags |= SDL_HWACCEL;
-
-    /* Sets up OpenGL double buffering */
-    SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
-
-    /* get a SDL surface */
-    _surface = SDL_SetVideoMode( pixWidth, pixHeight, SCREEN_BPP,
-				 videoFlags );
-
-    /* Verify there is a surface */
-    if ( !_surface ) {
-      std::cerr<<"Video mode set failed: "<<SDL_GetError( )<<std::endl;
-      quit( 1 );
-    }
+  void resize_callback(std::function<void (ScreenData&)> fn) {
+    _resize_callback.push_back(fn);
   }
 
+  void resize_window(int width, int height) {
+    /* Protect against a divide by zero */
+    if ( height == 0 ) height = 1;
 
-  /* general OpenGL initialization function */
-  int initGL() {
+    aspectRatio = (double)width / (double)height;
+
+    SDL_SetWindowSize(window, width, height);
+
+    /* Setup our viewport. */
+    glViewport( 0, 0, ( GLsizei )width, ( GLsizei )height );
+
+    /* change to the projection matrix and set our viewing volume. */
+    glMatrixMode( GL_PROJECTION );
+    glLoadIdentity( );
+
+    /* Set our perspective */
+    gluPerspective( 45.0f, aspectRatio, 0.1f, 100.0f );
+
+    /* Make sure we're chaning the model view and not the projection */
+    glMatrixMode( GL_MODELVIEW );
+
+    pixWidth = width;
+    pixHeight = height;
+
+    glHeight = 3.0;
+    glWidth = aspectRatio * glHeight;
+
+    dHalf_x = glWidth / 2;
+    dHalf_y = glHeight / 2;
+
+    iHalf_x = static_cast<int>(pixWidth / 2);
+    iHalf_y = static_cast<int>(pixHeight / 2);
+
+    for(auto i = _resize_callback.begin(), end = _resize_callback.end()
+	  ; i != end
+	  ; ++i)
+      (*i)(*this);
+  }
+
+  ScreenData() {
+    SDL_DisplayMode current;
+
+    SDL_CreateWindowAndRenderer(0, 0, SDL_WINDOW_OPENGL, &window, &renderer);
+
+    if( SDL_GetCurrentDisplayMode(0, &current) ) {
+      std::cerr << "error getting display" << std::endl;
+      quit(1);
+    }
+      
+    pixWidth = current.w;
+    pixHeight = current.h;
+
     /* Enable smooth shading */
     glShadeModel( GL_SMOOTH );
 
@@ -109,68 +129,7 @@ class ScreenData {
     /* Really Nice Perspective Calculations */
     glHint( GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST );
 
-    return( 1 );
-  }
-public:
-  int pixWidth, pixHeight;
-  double glWidth, glHeight;
-  double aspectRatio;
-
-  constexpr static double dFOV = 0.275; //field of view angle factor
-
-  /* so, to project a mouse click onto the game-board plane I can use the center of the screen in terms of pixles and
-     center in terms of the OpenGL coordinates to calibrate my offsets */
-  double dHalf_x, dHalf_y;
-  int iHalf_x, iHalf_y;
-
-  void resize_window(int width, int height) {
-    /* handle resize event */
-    _surface = SDL_SetVideoMode( width
-				 , height
-				 , 16, videoFlags );
-    if ( !_surface ) {
-      std::cerr<<"Could not get a surface after resize: "<<SDL_GetError( )<<std::endl;
-      quit( 1 );
-    }
-
-    /* Protect against a divide by zero */
-    if ( height == 0 ) height = 1;
-
-    aspectRatio = (double)width / (double)height;
-
-    /* Setup our viewport. */
-    glViewport( 0, 0, ( GLsizei )width, ( GLsizei )height );
-
-    /* change to the projection matrix and set our viewing volume. */
-    glMatrixMode( GL_PROJECTION );
-    glLoadIdentity( );
-
-    /* Set our perspective */
-    gluPerspective( 45.0f, aspectRatio, 0.1f, 100.0f );
-
-    /* Make sure we're chaning the model view and not the projection */
-    glMatrixMode( GL_MODELVIEW );
-
-    /* Reset The View */
-    glLoadIdentity( );
-
-    pixWidth = width;
-    pixHeight = height;
-
-    glHeight = 3.0;
-    glWidth = aspectRatio * glHeight;
-
-    dHalf_x = glWidth / 2;
-    dHalf_y = glHeight / 2;
-
-    iHalf_x = static_cast<int>(pixWidth / 2);
-    iHalf_y = static_cast<int>(pixHeight / 2);
-  }
-
-  ScreenData(int width = 640, int height = 480) : pixWidth(640), pixHeight(480) {
-    initSDL( videoInfo, videoFlags );
-    initGL();
-    resize_window(width, height);
+    resize_window(pixWidth, pixHeight);
   }
 };
 

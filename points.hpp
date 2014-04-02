@@ -71,6 +71,12 @@ struct Triplet : public Pair<Num> {
     return *this;
   }
 
+  Triplet& operator=(const Triplet& in) {
+    P::_x = in._x;
+    P::_y = in._y;
+    _z = in._z;
+    return *this;
+  }
 };
 
 typedef Triplet<double> dTriplet;

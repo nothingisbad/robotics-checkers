@@ -18,9 +18,6 @@
 #include "./gl_display.hpp"
 #include "./checkers.hpp"
 
-/* screen width, height, and bit depth */
-// 
-
 using namespace std;
 using namespace std::chrono;
 
@@ -31,8 +28,6 @@ namespace simple_colors {
   static const dTriplet black = dTriplet(0.4, 0.4, 0.4);
 }
 inline void color(dTriplet c) { glColor3f(c._x, c._y, c._z); }
-
-
 
 class SimpleTimer {
   time_point<steady_clock> m_ending;
@@ -50,25 +45,21 @@ public:
   }
 };
 
-
 /* function to handle key press events */
-void handleKeyPress( SDL_keysym *keysym ) {
-    switch ( keysym->sym )
-	{
-	case SDLK_ESCAPE:
-	    /* ESC key was pressed */
-	    quit( 0 );
-	    break;
-	case SDLK_F1:
-	    /* F1 key was pressed
-	     * this toggles fullscreen mode
-	     */
-
-	    break;
-	default:
-	    break;
-	}
-    return;
+void handleKeyPress( SDL_Keysym *keysym ) {
+  switch ( keysym->sym ) {
+  case SDLK_ESCAPE:
+    /* ESC key was pressed */
+    quit( 0 );
+    break;
+  case SDLK_F1:
+    /* F1 key was pressed
+     * this toggles fullscreen mode
+     */
+    break;
+  default:
+    break;
+  }
 }
 
 inline void draw_square() {
@@ -151,6 +142,48 @@ public:
   void reset() { _move = false; }
 };
 
+struct PlaybackControl {
+  dTriplet Pos;
+  bool bPlaying;
+  dPair glBBox;
+
+  PlaybackControl() : glBBox(0.01, 0.01) {
+    bPlaying = true;
+    Pos._z = -0.1;
+  }
+
+  bool playP() {
+    return bPlaying;
+  }
+
+  void resize(const ScreenData& screen) {
+    Pos = dTriplet(pix_to_gl(screen
+			     , iPair(20,20)
+			     , Pos._z)
+		   , Pos._z);
+  }
+
+  void clicked() {
+    bPlaying ^= true;
+  }
+
+  void draw() {
+    glLoadIdentity( );
+    glTranslatef(Pos._x, Pos._y, Pos._z);
+    if(bPlaying) {
+      glColor3f( 0.1, 0.9, 0.2 );
+    } else {
+      glColor3f( 0.8, 0.2, 0.1 );
+    }
+    glBegin( GL_TRIANGLES ); {
+      glVertex3f( -0.001, 0.001, 0 );
+      glVertex3f( -0.001, -0.001 , 0);
+      glVertex3f( 0.001, 0.0, 0);
+    }
+    glEnd();
+  }
+};
+
 /**************************/
 /*  __  __       _        */
 /* |  \/  | __ _(_)_ __   */
@@ -182,23 +215,17 @@ int main( int argc, char **argv ) {
 
     SimpleTimer drag_timer( milliseconds(250) );
 
-
-    dTriplet grid_center;
-
-    Camera camera;
+    Camera camera((double)(board._columns / 2) - 1.0
+		  , (double)(board._columns / 2) - 1.0
+		  , -20);
     dTriplet cameraDragStart;
 
     //selection
     MoveSelection selector(camera);
 
-    //setup the camera
-    grid_center._x = (double)(board._columns / 2) - 1.0;
-    grid_center._y = (double)(board._columns / 2) - 1.0;
-    grid_center._z = 0;
-
-    camera._x = grid_center._x;
-    camera._y = grid_center._y;
-    camera._z = -20;
+    //playback
+    PlaybackControl play_button;
+    screen.resize_callback( [&play_button](ScreenData &s) { play_button.resize(s); } );
 
     /* wait for events */ 
     while ( !done ) {
@@ -216,20 +243,20 @@ int main( int argc, char **argv ) {
 	  } else bDragging = drag_timer.done();
 	}
 	switch( event.type ) {
-	case SDL_ACTIVEEVENT:
-	  /* Something's happend with our focus
-	   * If we lost focus or we are iconified, we
-	   * shouldn't draw the screen
-	   */
-	  if ( event.active.gain == 0 )
-	    isActive = false;
-	  else
+	case SDL_WINDOWEVENT:
+	  switch( event.window.event ) {
+	    case SDL_WINDOWEVENT_HIDDEN:
+	      isActive = false;
+	      break;
+
+	  case SDL_WINDOWEVENT_EXPOSED:
 	    isActive = true;
-	  break; 
+	    break; 
 
-	case SDL_VIDEORESIZE:
-	  screen.resize_window(event.resize.w, event.resize.h );
-
+	  case SDL_WINDOWEVENT_RESIZED:
+	    screen.resize_window(event.window.data1, event.window.data2);
+	    break;
+	  }
 	  break;
 
 	case SDL_MOUSEBUTTONDOWN:
@@ -280,6 +307,8 @@ int main( int argc, char **argv ) {
 	/* Clear The Screen And The Depth Buffer */
 	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
+	play_button.draw();
+
 	for(int i = 0; i < board._rows; ++i) {
 
 	  /* offset the squares to make the checkerboard pattern */
@@ -301,10 +330,10 @@ int main( int argc, char **argv ) {
 	    if( selector.selected() && (iPair(i,j) == selector.src() ) )
 	      color(blue);
 	      
-	    else if( board.is_red(i, j) )
+	    else if( board.is(Board::Red,i, j) )
 	      color(red);
 
-	    else if( board.is_black(i, j) )
+	    else if( board.is(Board::Black,i, j) )
 	      color(green);
 
 	    else
@@ -313,10 +342,10 @@ int main( int argc, char **argv ) {
 	    draw_square();
 	  }
 	}
-	
-	/* Draw it to the screen */
-	SDL_GL_SwapBuffers( );
+	SDL_GL_SwapWindow(screen.window);
       }
+
+      
 
       if( selector.do_move() ) {
 	board.move( selector.src()

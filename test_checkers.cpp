@@ -7,6 +7,8 @@
 #include <cbc.h>
 
 #include "./checkers.hpp"
+#include "./AI.hpp"
+
 #include <iostream>
 
 using namespace std;
@@ -15,10 +17,13 @@ int main() {
   Board b, c(Board::empty);
   string input;
   int x, y;
-  iPair src, dst;
+  AI ai;
+  Move move;
 
   c.place(Board::red,0,0);
   c.place(Board::black,3,2);
+
+  cout << "* Board b:\n" << b << endl;
 
   cout<<"* Board c:\n" << c << endl;
 
@@ -35,15 +40,43 @@ int main() {
 
     else if("move" == input) {
       cin >> x; cin >> y;
-      src = iPair(x,y);
+      move.src = iPair(x,y);
       cin >> x; cin >> y;
-      dst = iPair(x,y);
+      move.dst = iPair(x,y);
 
-      b.move(src,dst);
+      b.move(move);
+    }
+
+    else if("next" == input) {
+      cin >> input;
+      cin >> x;
+
+      if(input == "red")
+	move = b.nth_move(Board::State::red, x);
+      else
+	move = b.nth_move(Board::State::black, x);
+
+      cout << "From " << move.src << " To " << move.dst << endl;
+
+      b.move( move );
+    }
+
+    else if("reset" == input) {
+      b = Board();
     }
 
     else if("quit" == input) {
       return 0;
+    }
+
+    else if("play" == input) {
+      cin >> input;
+      if("red" == input)
+	move = ai(Board::State::red, b);
+      else
+	move = ai(Board::State::black, b);
+
+      b.move( move );
     }
 
     else if("simple" == input) {
