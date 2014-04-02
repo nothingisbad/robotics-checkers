@@ -10,16 +10,20 @@
 
 #include <GL/gl.h>
 #include <GL/glu.h>
-#include "SDL.h"
+
+#include <SDL.h>
 
 #include <iostream>
 #include <chrono>
+#include <thread>
+#include <mutex>
 
 #include "./gl_display.hpp"
 #include "./checkers.hpp"
 
 using namespace std;
 using namespace std::chrono;
+
 
 namespace simple_colors {
   static const dTriplet green = dTriplet(0.1, 0.9, 0.1);
@@ -50,7 +54,7 @@ void handleKeyPress( SDL_Keysym *keysym ) {
   switch ( keysym->sym ) {
   case SDLK_ESCAPE:
     /* ESC key was pressed */
-    quit( 0 );
+    exit( 0 );
     break;
   case SDLK_F1:
     /* F1 key was pressed
@@ -92,8 +96,9 @@ inline void draw_triangle(const dTriplet& tri_color, const dTriplet& pos, const 
     glVertex3f( bbox._x, 0.0, 0.0f);
   }
   glEnd( );
-} 
+}
 
+/* select and move a checker piece */
 class MoveSelection {
   dPair _src, _dst;
   bool _selected, _move;
@@ -113,6 +118,7 @@ class MoveSelection {
       offset = 0.0;
 
     j = (p._x - offset + _camera._x + 1) / 4.0;
+
     return iPair(i,j); 
   }
 
@@ -121,13 +127,11 @@ public:
 
   dPair& clicked() {
     if(_selected) {
-      cout << "Moving" << endl;
       _selected = false;
       _move = true;
       return _dst;
 
     } else {
-      cout << "Selecting" << endl;
       _selected = true;
       _move = false;
       return _src;
@@ -163,6 +167,12 @@ struct PlaybackControl {
 		   , Pos._z);
   }
 
+  bool point_on(dPair point) {
+    dPair pos(Pos._x, Pos._y);
+    std::cout << "Point " << point << " in " << pos << " +/-" << glBBox << "?" << std::endl;
+    return (point > (pos - glBBox)) && (point < (pos + glBBox));
+  }
+
   void clicked() {
     bPlaying ^= true;
   }
@@ -170,6 +180,7 @@ struct PlaybackControl {
   void draw() {
     glLoadIdentity( );
     glTranslatef(Pos._x, Pos._y, Pos._z);
+
     if(bPlaying) {
       glColor3f( 0.1, 0.9, 0.2 );
     } else {
@@ -215,8 +226,9 @@ int main( int argc, char **argv ) {
 
     SimpleTimer drag_timer( milliseconds(250) );
 
-    Camera camera((double)(board._columns / 2) - 1.0
-		  , (double)(board._columns / 2) - 1.0
+    /* convinient, squares are 2 units wide, so I don't have to divide to get a half way point */
+    Camera camera(board._columns + 3.0
+		  , board._columns + 3.0
 		  , -20);
     dTriplet cameraDragStart;
 
@@ -242,6 +254,7 @@ int main( int argc, char **argv ) {
 	    camera._y = cameraDragStart._y + dMouse._y - mouseOffset._y;
 	  } else bDragging = drag_timer.done();
 	}
+
 	switch( event.type ) {
 	case SDL_WINDOWEVENT:
 	  switch( event.window.event ) {
@@ -256,7 +269,13 @@ int main( int argc, char **argv ) {
 	  case SDL_WINDOWEVENT_RESIZED:
 	    screen.resize_window(event.window.data1, event.window.data2);
 	    break;
+
+	  case SDL_WINDOWEVENT_CLOSE:
+	    exit(0);
+	    break;
 	  }
+
+
 	  break;
 
 	case SDL_MOUSEBUTTONDOWN:
@@ -272,11 +291,14 @@ int main( int argc, char **argv ) {
 	case SDL_MOUSEBUTTONUP:
 	  //todo: check timer, if the button's been held too long and mouse hasn't moved, do nothing
 	  if(!bDragging) {
-	    selector.clicked()
-	      = pix_to_gl(screen
-			  , iMouse
-			  , camera._z);
-	    
+	    if( play_button.point_on( pix_to_gl(screen, iMouse, play_button.Pos._z) ) )
+	      play_button.clicked();
+
+	    else {
+	      selector.clicked() = pix_to_gl(screen,
+					     iMouse,
+					     camera._z);
+	    }
 	  }
 	  bMouseButtonDown = false;
 	  bDragging = false;
@@ -302,9 +324,6 @@ int main( int argc, char **argv ) {
       /*******************/
       if ( isActive ) {
 	double offset, x, y;
-	dPair p;
-
-	/* Clear The Screen And The Depth Buffer */
 	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
 	play_button.draw();
@@ -342,25 +361,19 @@ int main( int argc, char **argv ) {
 	    draw_square();
 	  }
 	}
+
 	SDL_GL_SwapWindow(screen.window);
       }
-
-      
 
       if( selector.do_move() ) {
 	board.move( selector.src()
 		    , selector.dst() );
 	selector.reset();
       }
-	
 
       /* I suppose we'd ask for an AI update here. */
     }
 
-    /* clean ourselves up and exit */
-    quit( 0 );
-
-    /* Should never get here */
     return( 0 );
 }
 

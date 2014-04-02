@@ -13,7 +13,7 @@
 
 #include "./points.hpp"
 
-#define SCREEN_BPP     16
+#define SCREEN_BPP     24
 
 class Camera : public dTriplet {
 public:
@@ -21,21 +21,9 @@ public:
   Camera(double x, double y, double z) : dTriplet(x,y,z), _is_absolute(false) {}
 };
 
-/* function to release/destroy our resources and restoring the old desktop */
-void quit( int returnCode ) {
-    /* clean up the window */
-    SDL_Quit( );
-
-    /* and exit appropriately */
-    exit( returnCode );
-}
-
 struct ScreenData {
-  /**
-   * Adapted from the NeHe openGL tutorials and sdl2_opengl.c gist
-   */
   SDL_Window* window;
-  SDL_Renderer* renderer;
+  SDL_GLContext context;
 
   // public:
   typedef std::function<void (ScreenData&)> ResizeCallback;
@@ -67,7 +55,7 @@ struct ScreenData {
     SDL_SetWindowSize(window, width, height);
 
     /* Setup our viewport. */
-    glViewport( 0, 0, ( GLsizei )width, ( GLsizei )height );
+    glViewport( 0, 0, width, height );
 
     /* change to the projection matrix and set our viewing volume. */
     glMatrixMode( GL_PROJECTION );
@@ -98,23 +86,39 @@ struct ScreenData {
   }
 
   ScreenData() {
-    SDL_DisplayMode current;
+    using namespace std;
+    /* SDL_DisplayMode current; */
 
-    SDL_CreateWindowAndRenderer(0, 0, SDL_WINDOW_OPENGL, &window, &renderer);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 1);
 
-    if( SDL_GetCurrentDisplayMode(0, &current) ) {
-      std::cerr << "error getting display" << std::endl;
-      quit(1);
-    }
-      
-    pixWidth = current.w;
-    pixHeight = current.h;
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, SCREEN_BPP);
 
-    /* Enable smooth shading */
-    glShadeModel( GL_SMOOTH );
+    /* GetCurrentDisplayMode fails on the laptop.  */
+    /* if( SDL_GetCurrentDisplayMode( 0, &current ) ) { */
+    /*   cout << "Error!" << endl; */
+    /*   exit(1); */
+    /* } */
 
-    /* Set the background black */
+    /* pixWidth = current.w; */
+    /* pixHeight = current.h; */
+
+    pixWidth = 1366;
+    pixHeight = 768;
+
+    window = SDL_CreateWindow("gl_checkers"
+			      , SDL_WINDOWPOS_UNDEFINED
+			      , SDL_WINDOWPOS_UNDEFINED
+			      , pixWidth, pixHeight
+			      , SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE
+			      | SDL_WINDOW_FULLSCREEN_DESKTOP | SDL_WINDOW_SHOWN);
+
+    context = SDL_GL_CreateContext(window);
+
+    SDL_GL_SetSwapInterval(1);
+
     glClearColor( 0.0f, 0.0f, 0.0f, 0.0f );
+    glClear( GL_COLOR_BUFFER_BIT );
 
     /* Depth buffer setup */
     glClearDepth( 1.0f );
@@ -129,7 +133,14 @@ struct ScreenData {
     /* Really Nice Perspective Calculations */
     glHint( GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST );
 
+    std::cout << "W/H: " << pixWidth << "/" << pixHeight << std::endl;
     resize_window(pixWidth, pixHeight);
+  }
+
+  ~ScreenData() {
+    SDL_GL_DeleteContext(context);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
   }
 };
 

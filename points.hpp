@@ -16,14 +16,19 @@ public:
 
   Pair(Num x, Num y) : _x(x), _y(y) {}
 
-  Pair operator+(const Pair<Num&> p) const {
+  Pair operator+(const Pair& p) const {
     return Pair(p._x + _x, p._y + _y);  }
+
+  Pair operator-(const Pair& p) const {
+    return Pair(p._x - _x, p._y - _y);  }
+
 
   bool operator<(const Pair& p) const {
     return (_x < p._x) && (_y < p._y);  }
 
   bool operator>(const Pair& p) const {
     return (_x > p._x) && (_y > p._y);  }
+
 
   bool operator==(const Pair& p) const {
     return (_x == p._x) && (_y == p._y);
