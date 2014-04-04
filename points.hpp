@@ -11,33 +11,35 @@
 template<class Num>
 class Pair {
 public:
-  Num _x, _y;
+  Num x, y;
   Pair() = default;
 
-  Pair(Num x, Num y) : _x(x), _y(y) {}
+  Pair(Num i_x, Num i_y) : x(i_x), y(i_y) {}
 
   Pair operator+(const Pair& p) const {
-    return Pair(p._x + _x, p._y + _y);  }
+    return Pair(p.x + x, p.y + y);  }
 
   Pair operator-(const Pair& p) const {
-    return Pair(p._x - _x, p._y - _y);  }
+    return Pair(x - p.x, y - p.y);  }
 
 
   bool operator<(const Pair& p) const {
-    return (_x < p._x) && (_y < p._y);  }
+    return (x < p.x) && (y < p.y);  }
 
   bool operator>(const Pair& p) const {
-    return (_x > p._x) && (_y > p._y);  }
+    return (x > p.x) && (y > p.y);  }
 
 
   bool operator==(const Pair& p) const {
-    return (_x == p._x) && (_y == p._y);
+    return (x == p.x) && (y == p.y);
   }
+
+  bool operator!=(const Pair& p) const { return !(*this == p); }
 };
 
 template<class Num>
 std::ostream& operator<<(std::ostream &out, const Pair<Num>& p) {
-  return out << "(" << p._x << "," << p._y << ")";
+  return out << "(" << p.x << "," << p.y << ")";
 }
 
 typedef Pair<int> iPair;
@@ -47,39 +49,38 @@ template<class Num>
 struct Triplet : public Pair<Num> {
   typedef Pair<Num> P;
   
-  Num _z;
+  Num z;
 
   Triplet() = default;
-  Triplet(P p, Num z) : P(p), _z(z) {}
-  Triplet(Num x, Num y, Num z) : P(x, y), _z(z) {}
-
+  Triplet(P p, Num z) : P(p), z(z) {}
+  Triplet(Num x, Num y, Num z) : P(x, y), z(z) {}
 
   Triplet& operator-() {
-    P::_x = -P::_x;
-    P::_y = -P::_y;
-    _z = -_z;
+    P::x = -P::x;
+    P::y = -P::y;
+    z = -z;
     return *this;
   }
 
   Triplet operator+(const Triplet& input) const {
-    return Triplet(P::_x + input._x, P::_y + input._y, input._z + _z);
+    return Triplet(P::x + input.x, P::y + input.y, input.z + z);
   }
 
   Triplet operator-(const Triplet& input) const {
-    return Triplet(P::_x - input._x, P::_y - input._y, _z - input._z);
+    return Triplet(P::x - input.x, P::y - input.y, z - input.z);
   }
 
   Triplet& operator+=(const Triplet& in) {
-    P::_x += in._x;
-    P::_y += in._y;
-    _z += in._z;
+    P::x += in.x;
+    P::y += in.y;
+    z += in.z;
     return *this;
   }
 
   Triplet& operator=(const Triplet& in) {
-    P::_x = in._x;
-    P::_y = in._y;
-    _z = in._z;
+    P::x = in.x;
+    P::y = in.y;
+    z = in.z;
     return *this;
   }
 };
@@ -88,7 +89,7 @@ typedef Triplet<double> dTriplet;
 
 template<class Num>
 std::ostream& operator<<(std::ostream &out, const Triplet<Num>& p) {
-  return out << "(" << p._x << "," << p._y << "," << p._z << ")";
+  return out << "(" << p.x << "," << p.y << "," << p.z << ")";
 }
 
 

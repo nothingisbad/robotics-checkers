@@ -7,88 +7,89 @@
  *
  * A checkers playing AI.
  */
-
+#include <tuple>
 #include "./checkers.hpp"
 
-/* A light-weight object which can evaluate the relitive strength of a move */
-class WeightMove {
-public:
-  int operator()(Board::State color, const Board& b, const Move& m) const {
-    int initial_count = 0
-      , subsequent_count = 0;
+namespace checkers_AI {
+  int weight_move(Board::State color, const Board& b, const Move& m) {
+    if( m.is_capture() )
+      return 1;
 
-    /* just look for peices lost */
-    for(int i = 0; i < Board::_rows; ++i) {
-      for(int j = 0; j < Board::_columns; ++j) {
-	if( b.square_state(i,j) == color )
-	  ++initial_count;
-	if( b.square_state(i,j) == color )
-	  ++subsequent_count;
-      }
-    }
-
-    return subsequent_count - initial_count;
+    return 0;
   }
-};
-
-class WeighBranch {
-public:
-  WeightMove compair_move;
-  
-  int compair(int depth
-	      , Board::State color
-	      , const Board& b
+    
+  /**
+   * Computes the move weight of move.
+   * 
+   * @param depth: must be >= 1 to start
+   * @return: 
+   */
+  int compair(int depth, Board::State color
+	      , Board b
 	      , const Move& move) {
+    using namespace std;
 
-    int sum = compair_move(color, b, move);
-    Board::State other = b.opponent_color(color);
+    struct AccType {
+      int sum;
+      Board::State opponent_color;
+      int depth;
+      Board &b;
+      AccType(int i_sum, Board::State i_color, int i_depth, Board& i_b)
+	: sum(i_sum), opponent_color(i_color), depth(i_depth), b(i_b) {}
+    };
 
-    Board tmp;
+    AccType acc(weight_move(color, b, move)
+		, b.opponent_color(color)
+		, depth - 1 , b);
 
-    if(depth == 0)
-      return 0;
+    b.legal_move(move);
 
-    for( int i = 0,
-	   end = b.liberties(color);
-	 i < end; ++i ) {
-      tmp = b;
-      sum -= compair(depth - 1
-		     , other
-		     , tmp
-		     , tmp.nth_move(other, i)
-		     );
+    if(depth <= 1)
+      return acc.sum;
 
-    }
-    return sum;
+    return b.move_fold< AccType >([](AccType& a, Move m) -> void {
+	a.sum -= compair( a.depth - 1
+			  , a.opponent_color
+			  , a.b
+			  , m);
+      }
+      , acc
+      , acc.opponent_color
+      ).sum;
   }
-};
+}
 
 class AI {
-public:
-  Move operator()(Board::State color, const Board& b) {
-    WeighBranch weigh;
+  public:
+    Move operator()(Board::State color, const Board& b) {
+      using namespace std;
+      struct AccType {
+	Move best_move;
+	int best_weight;
+	Board::State color;
+	Board b;
+	AccType(Move i_m, int i_max_weight, Board::State i_color, Board i_b)
+	  : best_move(i_m), best_weight(i_max_weight), color(i_color), b(i_b) {}
+      };
 
-    int i_max = -1000
-      , sum;
-    Move m_max
-      , m;
+      AccType acc = AccType(Move(),-1000,color,b);
 
-    for( int i = 0,
-	   end = b.liberties(color);
-	 i < end; ++i ) {
+      return
+	b.move_fold< AccType >( [](AccType& a, Move m) -> void {
+	    int weight = checkers_AI::compair(3, a.color, a.b, m);
 
-      m = b.nth_move(color, i);
-
-      sum = weigh.compair(3, color, b
-			  , m);
-
-      if(sum > i_max) {
-	i_max = sum;
-	m_max = m;
-      }
+	    // std::cout << "Move: " << m.dst << " weight: " << weight << std::endl;
+	    if( weight > a.best_weight ) {
+	      a.best_weight = weight;
+	      a.best_move = m;
+	    }
+	  }
+	  , acc
+	  , color
+	  ).best_move;
     }
-    return m_max;
-  } };
+
+  };
 
 
 #endif

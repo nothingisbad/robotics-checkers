@@ -9,17 +9,20 @@
  */
 
 #include <iostream>
-
+#include <vector>
 #include <ostream>
 #include <tuple>
 
 #include "./points.hpp"
 
 struct Move {
-  iPair src, dst;
+  iPair src, dst, capture;
+
+  bool is_capture() const { return capture.x != -1; }
 
   Move() = default;
-  Move(const iPair& s, const iPair& d) : src(s), dst(d) {}
+  Move(const iPair& s, const iPair& d) : src(s), dst(d), capture(-1,-1) {}
+  Move(const iPair& s, const iPair& d, const iPair& c) : src(s), dst(d), capture(c) {}
 };
 
 
@@ -44,6 +47,32 @@ private:
   State _board[_rows][_columns];
 
   /**
+   * The input move should have the moving piece in m.src and
+   * the peice to be jumped in m.capture.  m.dst will be set up
+   * by this function.
+   * 
+   * @param other:
+   * @param m: the move src and caputre
+   * @return: false if jump could not be carried out (ie due to obstructing peice).
+   */
+  bool jump_capture(Move &m) const {
+    iPair direction;
+
+    if(m.src.x < m.capture.x)
+      m.dst.x = m.capture.x + 1;
+    else
+      m.dst.x = m.capture.x - 1;
+
+    if( m.src.y == m.capture.y )
+      /* if the source row is even, jump right */
+      m.dst.y = m.capture.y + ((m.src.x % 2) == 0 ? 1 : -1);
+    else
+      m.dst.y = m.capture.y;
+
+    return is(Empty, m.dst);
+  }
+
+  /**
    * Should just be a function, but template rules are different for classes vs functions.
    * Because C++.
    * 
@@ -52,82 +81,81 @@ private:
    */
   template<class R>
   struct MoveFold {
-    typedef R (*FnType)(R, int, int, int, int);
+    typedef void (*FnType)(R&, Move);
+
     /* 'a' for apply */
     static R a(const FnType fn, R acc, const Board& b, State self) {
+      using namespace std;
       State other = opponent_color(self);
+      Move move;
 
-      auto next_column = [](int row, int column) -> int {
-	std::cout<< "  row is even?" << row % 2 << std::endl;
-	return column + (row % 2 == 0 ? 1 : -1);
-      };
-    
       int next_row
+	, offset_col
 	, dst_i = -1
-	, dst_j = -1;
-
+	, dst_j = -1 ;
+	
       /* red goes low to high, black high to low */
       if(self == red)
 	next_row = 1;
       else
 	next_row = -1;
-    
+
+      bool did_jump = false;
+      
+      auto compute_column_offset = [](int row) {
+	return (row % 2) == 1 ? 1 : -1;
+      };
+	
+
+      /* By the rules; if I can jump I _must_ */
       for(int i = 0; i < Board::_rows; ++i) {
+	offset_col = compute_column_offset(i);
+	dst_i = i + next_row;
+
 	for(int j = 0; j < Board::_columns; ++j) {
 	  /* todo: king movement */
 	  if( b.square_state(i,j) == self ) {
 
-	    /* check if I can move this piece */
-	    dst_i = i + next_row;
-	    dst_j = j;
+	    if( b.has_same(other, dst_i, j) ) {
+	      move = Move( iPair(i,j), iPair(), iPair(dst_i,j) );
+	      if( b.jump_capture(move)) {
+		did_jump = true;
+		fn(acc, move);
+	      }}
 
+	    dst_j = j + offset_col;
+	    /* jump, other column */
+	    if( b.has_same(other, dst_i, dst_j) ) {
+	      move = Move(iPair(i,j), iPair(), iPair(dst_i, dst_j));
+	      if( b.jump_capture(move)) {
+		did_jump = true;
+		fn(acc, move);
+	      }}
+	  }}}
+      if(did_jump) return acc;
+
+      /* If I didn't jump, check the free squares */
+      for(int i = 0; i < Board::_rows; ++i) {
+	offset_col = compute_column_offset(i);
+	dst_i = i + next_row;
+
+	for(int j = 0; j < Board::_columns; ++j) {
+	  if( b.square_state(i,j) == self ) {
+	    if( b.is(Empty, dst_i,  j) )
+	      fn(acc, Move( iPair(i,j)
+			    , iPair(dst_i, j))
+		 );
+
+	    dst_j = j + offset_col;
 	    if( b.is(Empty, dst_i, dst_j) )
-	      acc = fn(acc, i,j,dst_i,dst_j);
-
-	    else if( b.has_same(other, dst_i, dst_j)
-		     &&
-		     b.is(Empty, dst_i + next_row, dst_j) ) {
-	      std::cout << "Jump" << std::endl;
-	      dst_i = dst_i + next_row;
-	      acc = fn(acc,i,j, dst_i
-		       , dst_j );
-	    }
-	      
-	    dst_j = next_column(dst_i
-				, dst_j); 
-
-	    if( b.is(Empty, dst_i, dst_j) )
-	      acc = fn(acc, i,j,dst_i,dst_j);
-
-	    else if( b.has_same(other, dst_i,dst_j)
-		     && b.is(Empty
-			     , dst_i + next_row
-			     , next_column(dst_i + next_row
-					   , dst_j)
-			     )) {
-	      std::cout << "Jump" << std::endl;
-	      dst_i += next_row;
-	      dst_j = next_column(dst_i, dst_j);
-
-	      acc = fn(acc, i,j, dst_i,dst_j);
-	    }
-	      
-	  }
-	}
-      }
+	      fn(acc, Move( iPair(i,j)
+			    , iPair(dst_i,dst_j)
+			    ));
+	  }}}
       return acc;
     }
   };
 
-  static auto nth_move_helper(std::tuple<int,Move> a, int i, int j
-			      , int dst_i, int dst_j) -> decltype(a)  {
-    using namespace std;
-    if( get<0>(a) == 0 )
-      return make_tuple(-1, Move(iPair(i,j), iPair(dst_i,dst_j)));
-    if(get<0>(a) > 0)
-      --get<0>(a);
-    return a;
-  };
 
 public:
   /****************************************************/
@@ -146,15 +174,43 @@ public:
    * @param column: column to place the piece
    */
   void place(State color, int row, int column) { _board[row][column] = color; }
-  void place(State color, const iPair& p) { _board[p._x][p._y] = color; }
+  void place(State color, const iPair& p) { _board[p.x][p.y] = color; }
 
-  void move(const iPair& src, const iPair& dst) {
+  void unconditional_move(const iPair& src, const iPair& dst) {
     State piece = square_state(src);
     place(piece, dst);
     place(empty, src);
   }
 
-  void move(const Move& m) { move(m.src, m.dst);  }
+  /* unconditional move */
+  void unconditional_move(const Move& m) { unconditional_move(m.src, m.dst);  }
+
+  /* perform a  move and carries out the capture/makes king */
+  void legal_move(const Move& m) {
+    /* Jump */
+    if( m.is_capture() )
+      place(empty, m.capture);
+
+    unconditional_move(m);
+  }
+
+  /* check a move for legality and move the piece, performing jump etc as applicable */
+  void human_move(iPair src, iPair dst) {
+    using namespace std;
+
+    /* handle jump: */
+    if( opposites(src,dst) ) {
+      Move m(src,iPair(),dst);
+ 
+      std::cout << "Canidate jump " << src << " -> " << dst << std::endl;
+      if( jump_capture(m) )
+	legal_move(m);
+      else
+	cout << "Illegal move" << endl;
+    }
+
+    else unconditional_move(src, dst);
+  }
 
   /* picks the nth legal move for a given color.  Ordering is basically arbitrary, but
      each legal move maps to a unique n. */
@@ -162,7 +218,18 @@ public:
     using namespace std;
     auto acc = make_tuple((int)0, Move(iPair(0,0), iPair(0,0)));
 
-    auto result = MoveFold<decltype(acc)>::a(nth_move_helper, acc, *this, color);
+    auto nth_move_helper = [](std::tuple<int,Move>& a, Move m) -> void  {
+       using namespace std;
+       if(get<0>(a) < 0)
+	 return;
+
+       if( get<0>(a) == 0 )
+	 get<1>(a) = m;
+
+       --get<0>(a);
+    };
+
+    auto result = MoveFold< decltype(acc) >::a(nth_move_helper, acc, *this, color);
 
     if(get<0>(result) == -1)
       return get<1>(result);
@@ -190,6 +257,12 @@ public:
     return State::red;
   }
 
+  bool opposites(iPair a, iPair b) {
+    
+    return !is(Empty, a) && !is(Empty, b)
+      && ((square_state(a) & red) != (square_state(b) & red));
+  }
+
   /**
    * counts the number of moves which can be made for the parameter color from
    * the current board state.
@@ -198,18 +271,27 @@ public:
    * @return: the count.
    */
   int liberties(State color) const {
+    int acc = 0;
     return
-      MoveFold<int>::a( [](int acc, int i, int j, int ii, int jj) { return acc + 1; }
-      , 0 , *this, color);
+      MoveFold<int>::a( [](int& acc, Move _) -> void { ++acc; }
+      , acc, *this, color);
   }
 
   State square_state(int i, int j) const { return _board[i][j]; }
-  State square_state(const iPair& p) const { return _board[p._x][p._y]; }
+  State square_state(const iPair& p) const { return _board[p.x][p.y]; }
   
   template<class T>
   bool is(T, int row, int column) const {
-    return T::is( square_state(row,column) );
+    return (row >= 0) && (row < _rows)
+      && (column >= 0) && (column < _columns)
+      && T::is( square_state(row,column) );
   }
+
+  template<class T>
+  bool is(T _, iPair p) const {
+    return is(_,p.x,p.y);
+  }
+
 
   bool has_same(State state, int row, int column) const {
     return (square_state(row,column) & state) == state;
@@ -263,6 +345,22 @@ public:
   /* | |  | | \__ \ (__  */
   /* |_|  |_|_|___/\___| */
   /***********************/
+  /**
+   * Folds fn across all availible moves for given color with accumulator.
+   * The accumulator is passed along by reference, so be careful.
+   * 
+   * fn is of type void (*fn)(acc&, const Move&)
+   * 
+   * @tparam R: accumulator type
+   * @param fn: function being folded
+   * @param acc: accumulator
+   * @param color: type who's moves are being evaluated
+   * @return: the final state of the accumulator
+   */
+  template<class R>
+  R move_fold(const typename MoveFold<R>::FnType fn, R acc, State color) const {
+    return MoveFold<R>::a(fn,acc,*this,color);
+  }
                    
   /*************/
   /* Overloads */
@@ -319,19 +417,53 @@ public:
 
     for(int i = _rows - 1; i >= 0; --i) {
       out << "|";
-      if(0 == (i % 2)) out << "_|";
+      if(1 == (i % 2)) out << "_|";
 
       for(int j = 0; j < _columns - 1; ++j)
 	out << square_char(i,j) << "|_|";
       out << square_char(i, _columns - 1) << "|";
 
-      if(1 == (i % 2)) out << "_|";
+      if(0 == (i % 2)) out << "_|";
       out << "\n";
     }
     return out;
   }
+
+  void print() const;
 };
+void Board::print() const { print(std::cout); }
 
 std::ostream& operator<<(std::ostream &out, const Board &b) { return b.print(out); }
+
+/***********************************************/
+/*  _   _           _         _     _     _    */
+/* | | | |_ __   __| | ___   | |   (_)___| |_  */
+/* | | | | '_ \ / _` |/ _ \  | |   | / __| __| */
+/* | |_| | | | | (_| | (_) | | |___| \__ \ |_  */
+/*  \___/|_| |_|\__,_|\___/  |_____|_|___/\__| */
+/***********************************************/
+class UndoList {
+  std::vector<Board> _list;
+public:
+  const Board& operator()() {
+    return _list.back();
+  }
+
+  Board& push() {
+    _list.push_back(_list.back());
+    return _list.back();
+  }
+
+  void undo() {
+    _list.pop_back();
+  }
+
+  void reset() {
+    _list.clear();
+    _list.push_back(Board());
+  }
+
+  UndoList() { _list.push_back( Board() ); }
+};
 
 #endif

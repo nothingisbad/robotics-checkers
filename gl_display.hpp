@@ -19,6 +19,10 @@ class Camera : public dTriplet {
 public:
   bool _is_absolute;
   Camera(double x, double y, double z) : dTriplet(x,y,z), _is_absolute(false) {}
+  Camera& operator=(const dTriplet& other) {
+    *reinterpret_cast<dTriplet*>(this) = other;
+    return *this;
+  }
 };
 
 struct ScreenData {
@@ -150,8 +154,8 @@ dPair pix_to_gl(const ScreenData &screen
   double scale_factor = screen.dFOV * depth;
   /* I could add the arithmetic operator to the Pair objects and clean this up, but for my little project, I don't think
      it's worth the time.  */
-  return dPair( (screen.dHalf_x - (((double)pix._x / (double)screen.pixWidth) * screen.glWidth) ) * scale_factor ,
-		((((double)pix._y / (double)screen.pixHeight) * screen.glHeight) - screen.dHalf_y) * scale_factor );
+  return dPair( (screen.dHalf_x - (((double)pix.x / (double)screen.pixWidth) * screen.glWidth) ) * scale_factor ,
+		((((double)pix.y / (double)screen.pixHeight) * screen.glHeight) - screen.dHalf_y) * scale_factor );
 }
 
 iPair gl_to_pix(const ScreenData &screen, const double &x, const double &y, const double &z) {
@@ -163,13 +167,13 @@ iPair gl_to_pix(const ScreenData &screen, const double &x, const double &y, cons
 
 iPair gl_to_pix(const ScreenData &screen
 		,const dPair& point
-		,const double &_z) {
-  return gl_to_pix(screen, point._x, point._y, _z);
+		,const double &z) {
+  return gl_to_pix(screen, point.x, point.y, z);
 }
 
 iPair gl_to_pix(const ScreenData &screen
 		, const dTriplet &point) {
-  return gl_to_pix(screen, point._x, point._y, point._z);
+  return gl_to_pix(screen, point.x, point.y, point.z);
 }
 
 #endif
