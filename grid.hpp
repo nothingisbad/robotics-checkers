@@ -27,11 +27,16 @@ class Grid {
 public:
   const static int _n = 8
     , _m = 8;
-private:
+
+  //State defined as: enum State {  empty = 0, black = 1, red = 2, king = 4 };
   typedef Board::State State;
+private:
   State _grid[_n][_m];
 public:
+  /* query the state */
   State at(int i, int j) const { return _grid[i][j]; }
+
+  /* set the state */
   void  place(State value, int i, int j) { _grid[i][j] = value; }
 
   void clear() {
@@ -72,5 +77,7 @@ Board::Board(const Grid& g) {
       place( g.at(i, 2 * j + (even(i) ? 0 : 1))
 	    , i, j);
 }
+
+std::ostream& operator<<(std::ostream &out, const Grid &g) { return g.print(out); }
 
 #endif
