@@ -12,6 +12,7 @@
 #include <vector>
 #include <ostream>
 #include <tuple>
+#include <type_traits>
 
 #include "./points.hpp"
 
@@ -25,6 +26,14 @@ struct Move {
   Move(const iPair& s, const iPair& d, const iPair& c) : src(s), dst(d), capture(c) {}
 };
 
+class Grid;
+
+template<class Num>
+bool even(Num i) {
+  static_assert( std::is_integral<Num>::value
+		 , "even is only defined for integral numbers." );
+  return i % 2 == 0;
+}
 
 class Board {
 public:
@@ -114,7 +123,7 @@ private:
 
 	for(int j = 0; j < Board::_columns; ++j) {
 	  /* todo: king movement */
-	  if( b.square_state(i,j) == self ) {
+	  if( b.at(i,j) == self ) {
 
 	    if( b.has_same(other, dst_i, j) ) {
 	      move = Move( iPair(i,j), iPair(), iPair(dst_i,j) );
@@ -140,7 +149,7 @@ private:
 	dst_i = i + next_row;
 
 	for(int j = 0; j < Board::_columns; ++j) {
-	  if( b.square_state(i,j) == self ) {
+	  if( b.at(i,j) == self ) {
 	    if( b.is(Empty, dst_i,  j) )
 	      fn(acc, Move( iPair(i,j)
 			    , iPair(dst_i, j))
@@ -177,7 +186,7 @@ public:
   void place(State color, const iPair& p) { _board[p.x][p.y] = color; }
 
   void unconditional_move(const iPair& src, const iPair& dst) {
-    State piece = square_state(src);
+    State piece = at(src);
     place(piece, dst);
     place(empty, src);
   }
@@ -260,7 +269,7 @@ public:
   bool opposites(iPair a, iPair b) {
     
     return !is(Empty, a) && !is(Empty, b)
-      && ((square_state(a) & red) != (square_state(b) & red));
+      && ((at(a) & red) != (at(b) & red));
   }
 
   /**
@@ -277,14 +286,14 @@ public:
       , acc, *this, color);
   }
 
-  State square_state(int i, int j) const { return _board[i][j]; }
-  State square_state(const iPair& p) const { return _board[p.x][p.y]; }
+  State at(int i, int j) const { return _board[i][j]; }
+  State at(const iPair& p) const { return _board[p.x][p.y]; }
   
   template<class T>
   bool is(T, int row, int column) const {
     return (row >= 0) && (row < _rows)
       && (column >= 0) && (column < _columns)
-      && T::is( square_state(row,column) );
+      && T::is( at(row,column) );
   }
 
   template<class T>
@@ -292,11 +301,9 @@ public:
     return is(_,p.x,p.y);
   }
 
-
   bool has_same(State state, int row, int column) const {
-    return (square_state(row,column) & state) == state;
+    return (at(row,column) & state) == state;
   }
-
 
   /****************************************************************/
   /*   ____                _                   _                  */
@@ -328,6 +335,8 @@ public:
       for(int j = 0; j < _columns; ++j)
 	_board[i][j] = b._board[i][j];
   }
+
+  Board(const Grid& g);
 
   /**
    * fills in all squares with same state
@@ -400,6 +409,13 @@ public:
   /*********/
   /* Print */
   /*********/
+  /**
+   * Prints the checkers board.  I think it's more intuitive to have (0,0) at the bottom left of the
+   * screen, so that's what print dose. Opinions, I'm sure, will vary.
+   * 
+   * @param out: the output stream
+   * @return: the output stream
+   */
   std::ostream& print(std::ostream & out) const {
     using namespace std;
 
@@ -434,6 +450,7 @@ public:
 void Board::print() const { print(std::cout); }
 
 std::ostream& operator<<(std::ostream &out, const Board &b) { return b.print(out); }
+
 
 /***********************************************/
 /*  _   _           _         _     _     _    */
