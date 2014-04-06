@@ -19,7 +19,7 @@
 #include <mutex>
 
 #include "./gl_display.hpp"
-#include "./checkers.hpp"
+#include "./Board.hpp"
 #include "./AI.hpp"
 
 using namespace std;

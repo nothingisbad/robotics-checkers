@@ -4,8 +4,8 @@
  * Created on Mar 05, 2014
  */
 
-#include "./checkers.hpp"
-#include "./grid.hpp"
+#include "./Board.hpp"
+#include "./Grid.hpp"
 #include "./AI.hpp"
 
 #include <iostream>

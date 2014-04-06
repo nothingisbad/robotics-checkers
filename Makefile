@@ -19,7 +19,7 @@ CXX := $(CXX) $(FLAGS)
 CROSS_LIBS_DIR = ../cross-libs
 CROSS_LIBS = $(CROSS_LIBS_DIR)/libcbc.a $(CROSS_LIBS_DIR)/libtrack.a $(CROSS_LIBS_DIR)/libshared.a  $(CROSS_LIBS_DIR)/libgcc_s.so $(CROSS_LIBS_DIR)/init.o $(CROSS_LIBS_DIR)/libpthread-2.8.so $(CROSS_LIBS_DIR)/libm-2.8.so
 
-test_checkers: AI.hpp checkers.hpp test_checkers.cpp
+test_checkers: AI.hpp Board.hpp test_checkers.cpp
 	$(CXX) -o test_checkers test_checkers.cpp
 
 gl_checkers: *.hpp *.cpp

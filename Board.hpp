@@ -354,10 +354,7 @@ public:
 	_board[i][j] = b._board[i][j];
   }
 
-<<<<<<< HEAD:Board.hpp
   /* implemented in grid.hpp, after the Grid class. */
-=======
->>>>>>> 8f73400739320b4ee2e1510273aa98a7ad41e43d:checkers.hpp
   Board(const Grid& g);
 
   /**

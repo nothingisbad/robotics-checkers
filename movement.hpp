@@ -11,11 +11,6 @@
 #include "./checkers.hpp"
 #include "./grid.hpp"
 
-<<<<<<< HEAD
-class SensorGroup {
-public:
-  enum Sensing { ok = 0, done = 1, reverse = 2, fail = 4 };
-=======
 /**
  * returns -1 for input < 0, 1 for input > 0
  */
@@ -26,7 +21,6 @@ class SensorGroup {
 public:
   enum State { done = 0, ok = 1, reverse = 2, fail = 4 };
 
->>>>>>> 8f73400739320b4ee2e1510273aa98a7ad41e43d
 private:
   int _long
     , _behind
@@ -63,12 +57,7 @@ private:
 public:
   int grid_position() const { return _position; }
   
-<<<<<<< HEAD
-  /* true for OK, false for error */
-  Sensing run(int direction) {
-=======
   State run(int direction) {
->>>>>>> 8f73400739320b4ee2e1510273aa98a7ad41e43d
     int lead;
     if(direction > 0) {
       lead = _ahead;
@@ -81,15 +70,6 @@ public:
     if( toggle(lead) ) {
       _position += direction;
       if( sense(_long) && !even(_position) )
-<<<<<<< HEAD
-	return false;
-    }
-    return true;
-  }
-
-  /* assuming we've counted to the desired position, keep moving towards the centered-point. */
-  Sensing is_centered(int direction) {
-=======
 	return running;
     }
     return fail;
@@ -97,37 +77,17 @@ public:
 
   /* assuming we've counted to the desired position, keep moving towards the centered-point. */
   State is_centered(int direction) {
->>>>>>> 8f73400739320b4ee2e1510273aa98a7ad41e43d
     int lead,follow;
     sensor_lead_follow(direction, lead, follow);
 
-    switch( (beam_broken(lead) << 1) | beam_broken(follow) ) {
+    switch( beam_broken(lead) | (beam_broken(follow) << 1) ) {
     case 0:
       return done;
 
-    case 2:
+    case 1:
       return ok;
 
-<<<<<<< HEAD
-    if( !beam_broken(lead) && beam_broken(follow) )
-  }
-};
-
-class Cart {
-  static const int _max_velocity = 750;
-  
-  int _position
-    , _velocity;
-
-  int _motor;
-public:
-  int propotional_distance(int i) {
-    i -= _position;
-    return i * i;
-  }
-
-=======
-    case 1:
+    case 2:
       return reverse;
 
     case 3:
@@ -135,6 +95,7 @@ public:
     }
   }
 };
+
 
 /*************************/
 /*   ____           _    */
@@ -158,54 +119,24 @@ private
   State _state;
   
 public:
->>>>>>> 8f73400739320b4ee2e1510273aa98a7ad41e43d
   /**
    * Estimate time to move to a point
+   * If the cart on one axis doesn't have to travel as far, I should
+   * run it more slowely to save the gears and battery.
    * 
    * @param : distance to move
    * @return: time it will take
    */
-<<<<<<< HEAD
-  int est_time(int dst) {
-    return (_dst - _position) / _max_velocity;
-  }
-
-
-  /**
-   * Trim the velocity to arrive at about time.
-=======
   int estimate_time(int dst) {
     return (dst - _pos) / _max_velocity;
   }
 
   /**
-   * Trim the velocity to arrive at about time.
-   * The idea is I if the cart on one axis doesn't have to travel as far, I should
-   * run it more slowely to save the gears and battery.
->>>>>>> 8f73400739320b4ee2e1510273aa98a7ad41e43d
+   * Trim the velocity to arrive at approximately a given time.
    * 
    * @param time: when to arrive
    * @param dst: where to go
    */
-<<<<<<< HEAD
-  void move(int time, int dst) {
-    
-  }
-
-  void run() {
-    
-  }
-};
-
-class Arm {
-  iPair _velocity
-    , _position;
-  
-public:
-  /* Absolute co-ordinant on an 8x8 grid */
-  void move_to(iPair pos) {
-    
-=======
   void set_velocity(int time, int dst) {
     _velocity = ((_destination - _pos) * _max_velocity) / time;
   }
@@ -304,7 +235,6 @@ public:
 	return false;
       }
     }
->>>>>>> 8f73400739320b4ee2e1510273aa98a7ad41e43d
   };
 };
 

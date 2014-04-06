@@ -8,7 +8,7 @@
  * A checkers playing AI.
  */
 #include <tuple>
-#include "./checkers.hpp"
+#include "./Board.hpp"
 
 namespace checkers_AI {
   int weight_move(Board::State color, const Board& b, const Move& m) {
