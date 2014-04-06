@@ -89,101 +89,6 @@ private:
     return is(Empty, m.dst);
   }
 
-  /**
-   * Should just be a function, but template rules are different for classes vs functions.
-   * Named by analogy to fold in a functional language, MoveFold takes a function and a reference
-   * to an accumulator 
-   * 
-   * @tparam R: Accumulator type; the type should not be a reference - the reference type is added implicitly.
-   */
-  template<class R>
-  struct MoveFold {
-    typedef void (*FnType)(R&, Move);
-
-    /**
-     * Applies a function to each availible move on the current board for a given color.
-     * 
-     * @param fn: function to apply
-     * @param acc: an accumulator -- passed by reference; results are accumulated by modifying
-     *             this variable
-     * @param b: current board
-     * @param self: the color which will be moved
-     * @return: the accumulator (still a reference to the same value).
-     */
-    static R& a(const FnType fn, R& acc, const Board& b, State self) {
-      using namespace std;
-      State other = opponent_color(self);
-      Move move;
-
-      int next_row
-	, offset_col
-	, dst_i = -1
-	, dst_j = -1 ;
-	
-      /* red goes low to high, black high to low */
-      if(self == red)
-	next_row = 1;
-      else
-	next_row = -1;
-
-      bool did_jump = false;
-      
-      auto compute_column_offset = [](int row) {
-	return (row % 2) == 1 ? 1 : -1;
-      };
-	
-
-      /* By the rules; if I can jump I _must_, so loop over the jumps*/
-      for(int i = 0; i < Board::_rows; ++i) {
-	offset_col = compute_column_offset(i);
-	dst_i = i + next_row;
-
-	for(int j = 0; j < Board::_columns; ++j) {
-	  /* todo: king movement */
-	  if( b.at(i,j) == self ) {
-
-	    if( b.has_same(other, dst_i, j) ) {
-	      move = Move( iPair(i,j), iPair(), iPair(dst_i,j) );
-	      if( b.jump_capture(move)) {
-		did_jump = true;
-		fn(acc, move);
-	      }}
-
-	    dst_j = j + offset_col;
-	    /* jump, other column */
-	    if( b.has_same(other, dst_i, dst_j) ) {
-	      move = Move(iPair(i,j), iPair(), iPair(dst_i, dst_j));
-	      if( b.jump_capture(move)) {
-		did_jump = true;
-		fn(acc, move);
-	      }}
-	  }}}
-
-      /* if I did jump, none of the other moves are legal to take, so return now. */
-      if(did_jump) return acc;
-
-      /* If I didn't jump, check the free squares */
-      for(int i = 0; i < Board::_rows; ++i) {
-	offset_col = compute_column_offset(i);
-	dst_i = i + next_row;
-
-	for(int j = 0; j < Board::_columns; ++j) {
-	  if( b.at(i,j) == self ) {
-	    if( b.is(Empty, dst_i,  j) )
-	      fn(acc, Move( iPair(i,j)
-			    , iPair(dst_i, j))
-		 );
-
-	    dst_j = j + offset_col;
-	    if( b.is(Empty, dst_i, dst_j) )
-	      fn(acc, Move( iPair(i,j)
-			    , iPair(dst_i,dst_j)
-			    ));
-	  }}}
-      return acc;
-    }
-  };
-
 public:
   /****************************************************/
   /*  __  __                                     _    */
@@ -256,7 +161,7 @@ public:
        --get<0>(a);
     };
 
-    auto result = MoveFold< decltype(acc) >::a(nth_move_helper, acc, *this, color);
+    auto result = move_fold< decltype(acc) >(nth_move_helper, acc, color);
 
     if(get<0>(result) == -1)
       return get<1>(result);
@@ -300,8 +205,8 @@ public:
   int liberties(State color) const {
     int acc = 0;
     return
-      MoveFold<int>::a( [](int& acc, Move _) -> void { ++acc; }
-      , acc, *this, color);
+      move_fold<int>( [](int& acc, Move _) -> void { ++acc; }
+      , acc, color);
   }
 
   State at(int i, int j) const { return _board[i][j]; }
@@ -321,6 +226,10 @@ public:
 
   bool has_same(State state, int row, int column) const {
     return (at(row,column) & state) == state;
+  }
+
+  bool has_same(State state, iPair p) const {
+    return (at(p) & state) == state;
   }
 
   /****************************************************************/
@@ -373,6 +282,9 @@ public:
   /* | |  | | \__ \ (__  */
   /* |_|  |_|_|___/\___| */
   /***********************/
+  template<class R>
+  struct FoldFnType { typedef void (*type)(R&, Move); };
+
   /**
    * Folds fn across all availible moves for given color with accumulator.
    * The accumulator is passed along by reference, so be careful.
@@ -386,8 +298,87 @@ public:
    * @return: the final state of the accumulator
    */
   template<class R>
-  R move_fold(const typename MoveFold<R>::FnType fn, R acc, State color) const {
-    return MoveFold<R>::a(fn,acc,*this,color);
+  R move_fold(const typename FoldFnType<R>::type fn, R acc, State color) const {
+    using namespace std;
+    State other = opponent_color(color);
+    Move move;
+
+    int row_offset
+      , column_offset
+      , dst_row;
+
+    iPair src;
+	
+    /* red goes low to high, black high to low */
+    if(color == red)
+      row_offset = 1;
+    else
+      row_offset = -1;
+
+    bool did_jump = false;
+
+    /**
+     * @return: true if I did something
+     */
+    auto jump = [&](const iPair& src, const iPair& dst) -> bool {
+      if( has_same(other, dst) ) {
+	move = Move( src, iPair(), dst );
+	if( jump_capture(move)) {
+	  fn(acc, move);
+	  return true;
+	}}
+      return false;
+    };
+
+    auto do_move = [&](iPair src, iPair dst) -> bool {
+      if( is(Empty, dst) ) {
+	fn(acc, Move( src, dst ) );
+	return true;
+      }
+      return false;
+    };
+
+    /* By the rules; if I can jump I _must_, so loop over the jumps*/
+    for(int i = 0; i < Board::_rows; ++i) {
+      column_offset = even(i) ? -1 : 1;
+      dst_row = i + row_offset;
+
+      for(int j = 0; j < Board::_columns; ++j) {
+	if( at(i,j) == color ) {
+	  src = iPair(i,j);
+
+	  /* if it's a king, flip the movement direction and run the checks in that
+	     direction */
+	  if( is(King, i,j)) {
+	    did_jump |= jump(src, iPair(i - row_offset, j));
+
+	    did_jump |= jump(src, iPair(i - row_offset, j - column_offset));
+	  }
+ 
+	  did_jump |= jump(src, iPair(dst_row, j));
+	  did_jump |= jump(src, iPair(dst_row, j + column_offset));
+	}}}
+
+    /* if I did jump, none of the other moves are legal to take, so return now. */
+    if(did_jump) return acc;
+
+    /* If I didn't jump, check the free squares */
+    for(int i = 0; i < Board::_rows; ++i) {
+      column_offset = even(i) ? -1 : 1;
+      dst_row = i + row_offset;
+
+      for(int j = 0; j < Board::_columns; ++j) {
+	if( at(i,j) == color ) {
+	  src = iPair(i,j);
+	  if( is(King, src) ) {
+	    do_move(src, iPair(i - row_offset, j));
+	    do_move(src, iPair(i - row_offset, j - column_offset));
+	  }
+
+	  do_move(src, iPair(dst_row, j));
+	  do_move(src, iPair(dst_row, j + column_offset));
+	}}}
+    return acc;
   }
                    
   /*************/
