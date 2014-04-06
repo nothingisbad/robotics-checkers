@@ -22,13 +22,16 @@ public:
   Pair operator-(const Pair& p) const {
     return Pair(x - p.x, y - p.y);  }
 
+  /* scalar product */
+  Num dot(const Pair& p) const { return (x * p.x) + (y * p.y);  }
+
+
 
   bool operator<(const Pair& p) const {
     return (x < p.x) && (y < p.y);  }
 
   bool operator>(const Pair& p) const {
     return (x > p.x) && (y > p.y);  }
-
 
   bool operator==(const Pair& p) const {
     return (x == p.x) && (y == p.y);

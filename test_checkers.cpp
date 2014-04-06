@@ -5,6 +5,7 @@
  */
 
 #include "./checkers.hpp"
+#include "./grid.hpp"
 #include "./AI.hpp"
 
 #include <iostream>
@@ -27,7 +28,7 @@ int main() {
 
     if("at" == input) {
       cin >> x; cin >> y;
-      cout << b().square_state(x,y) << endl;
+      cout << b().at(x,y) << endl;
     }
 
     /* unconditional movement */
@@ -89,10 +90,19 @@ int main() {
       b.undo();
     }
 
+    /* just see if the grid interpretation looks like it should */
+    else if("grid" == input) {
+      Grid g(b());
+      g.print(std::cout);
+
+      Board c(g);
+      c.print(std::cout);
+    }
+
     else if("simple" == input) {
       for(int i = 0; i < Board::_rows; ++i) {
 	for(int j = 0; j < Board::_columns; ++j) {
-	  cout << b().square_state(i,j);
+	  cout << b().at(i,j);
 	}
 	cout << endl;
       }

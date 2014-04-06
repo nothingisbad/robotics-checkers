@@ -12,10 +12,19 @@
 #include <vector>
 #include <ostream>
 #include <tuple>
+#include <type_traits>
 
 #include "./points.hpp"
 
+/**
+ * Three pairs currently represent a move
+ */
 struct Move {
+  /* src: the beginning position of the piece
+     dst: the destination of the piece
+     capture: if a jump occured, capture is the location of the
+        captured peice.  Otherwise capture should be iPair(-1,-1)
+   */
   iPair src, dst, capture;
 
   bool is_capture() const { return capture.x != -1; }
@@ -25,6 +34,14 @@ struct Move {
   Move(const iPair& s, const iPair& d, const iPair& c) : src(s), dst(d), capture(c) {}
 };
 
+class Grid;
+
+template<class Num>
+bool even(Num i) {
+  static_assert( std::is_integral<Num>::value
+		 , "even is only defined for integral numbers." );
+  return i % 2 == 0;
+}
 
 class Board {
 public:
@@ -74,17 +91,26 @@ private:
 
   /**
    * Should just be a function, but template rules are different for classes vs functions.
-   * Because C++.
+   * Named by analogy to fold in a functional language, MoveFold takes a function and a reference
+   * to an accumulator 
    * 
-   * @tparam R:
-   * @tparam *fn:
+   * @tparam R: Accumulator type; the type should not be a reference - the reference type is added implicitly.
    */
   template<class R>
   struct MoveFold {
     typedef void (*FnType)(R&, Move);
 
-    /* 'a' for apply */
-    static R a(const FnType fn, R acc, const Board& b, State self) {
+    /**
+     * Applies a function to each availible move on the current board for a given color.
+     * 
+     * @param fn: function to apply
+     * @param acc: an accumulator -- passed by reference; results are accumulated by modifying
+     *             this variable
+     * @param b: current board
+     * @param self: the color which will be moved
+     * @return: the accumulator (still a reference to the same value).
+     */
+    static R& a(const FnType fn, R& acc, const Board& b, State self) {
       using namespace std;
       State other = opponent_color(self);
       Move move;
@@ -107,14 +133,14 @@ private:
       };
 	
 
-      /* By the rules; if I can jump I _must_ */
+      /* By the rules; if I can jump I _must_, so loop over the jumps*/
       for(int i = 0; i < Board::_rows; ++i) {
 	offset_col = compute_column_offset(i);
 	dst_i = i + next_row;
 
 	for(int j = 0; j < Board::_columns; ++j) {
 	  /* todo: king movement */
-	  if( b.square_state(i,j) == self ) {
+	  if( b.at(i,j) == self ) {
 
 	    if( b.has_same(other, dst_i, j) ) {
 	      move = Move( iPair(i,j), iPair(), iPair(dst_i,j) );
@@ -132,6 +158,8 @@ private:
 		fn(acc, move);
 	      }}
 	  }}}
+
+      /* if I did jump, none of the other moves are legal to take, so return now. */
       if(did_jump) return acc;
 
       /* If I didn't jump, check the free squares */
@@ -140,7 +168,7 @@ private:
 	dst_i = i + next_row;
 
 	for(int j = 0; j < Board::_columns; ++j) {
-	  if( b.square_state(i,j) == self ) {
+	  if( b.at(i,j) == self ) {
 	    if( b.is(Empty, dst_i,  j) )
 	      fn(acc, Move( iPair(i,j)
 			    , iPair(dst_i, j))
@@ -155,7 +183,6 @@ private:
       return acc;
     }
   };
-
 
 public:
   /****************************************************/
@@ -177,7 +204,7 @@ public:
   void place(State color, const iPair& p) { _board[p.x][p.y] = color; }
 
   void unconditional_move(const iPair& src, const iPair& dst) {
-    State piece = square_state(src);
+    State piece = at(src);
     place(piece, dst);
     place(empty, src);
   }
@@ -185,7 +212,7 @@ public:
   /* unconditional move */
   void unconditional_move(const Move& m) { unconditional_move(m.src, m.dst);  }
 
-  /* perform a  move and carries out the capture/makes king */
+  /* perform a move and carries out the capture/makes king */
   void legal_move(const Move& m) {
     /* Jump */
     if( m.is_capture() )
@@ -260,7 +287,7 @@ public:
   bool opposites(iPair a, iPair b) {
     
     return !is(Empty, a) && !is(Empty, b)
-      && ((square_state(a) & red) != (square_state(b) & red));
+      && ((at(a) & red) != (at(b) & red));
   }
 
   /**
@@ -277,14 +304,14 @@ public:
       , acc, *this, color);
   }
 
-  State square_state(int i, int j) const { return _board[i][j]; }
-  State square_state(const iPair& p) const { return _board[p.x][p.y]; }
+  State at(int i, int j) const { return _board[i][j]; }
+  State at(const iPair& p) const { return _board[p.x][p.y]; }
   
   template<class T>
   bool is(T, int row, int column) const {
     return (row >= 0) && (row < _rows)
       && (column >= 0) && (column < _columns)
-      && T::is( square_state(row,column) );
+      && T::is( at(row,column) );
   }
 
   template<class T>
@@ -292,11 +319,9 @@ public:
     return is(_,p.x,p.y);
   }
 
-
   bool has_same(State state, int row, int column) const {
-    return (square_state(row,column) & state) == state;
+    return (at(row,column) & state) == state;
   }
-
 
   /****************************************************************/
   /*   ____                _                   _                  */
@@ -328,6 +353,9 @@ public:
       for(int j = 0; j < _columns; ++j)
 	_board[i][j] = b._board[i][j];
   }
+
+  /* implemented in grid.hpp, after the Grid class. */
+  Board(const Grid& g);
 
   /**
    * fills in all squares with same state
@@ -400,6 +428,13 @@ public:
   /*********/
   /* Print */
   /*********/
+  /**
+   * Prints the checkers board.  I think it's more intuitive to have (0,0) at the bottom left of the
+   * screen, so that's what print dose. Opinions, I'm sure, will vary.
+   * 
+   * @param out: the output stream
+   * @return: the output stream
+   */
   std::ostream& print(std::ostream & out) const {
     using namespace std;
 
@@ -434,6 +469,7 @@ public:
 void Board::print() const { print(std::cout); }
 
 std::ostream& operator<<(std::ostream &out, const Board &b) { return b.print(out); }
+
 
 /***********************************************/
 /*  _   _           _         _     _     _    */
