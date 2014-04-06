@@ -1,5 +1,5 @@
-#ifndef CHECKERS_H
-#define CHECKERS_H
+#ifndef BOARD_HPP
+#define BOARD_HPP
 /**
  * @file /home/ryan/uml/robotics/checkers/checkers.h
  * @author Ryan Domigan <ryan_domigan@sutdents@uml.edu>
@@ -54,11 +54,13 @@ public:
   struct BlackType { static bool is(const State &s) { return s & black; } };
   struct RedType { static bool is(const State &s) { return s & red; } };
   struct KingType { static bool is(const State &s) { return s & king; }};
+  struct PawnType { static bool is(const State &s) { return !(s & king); }};
 
   const static EmptyType Empty;
   const static BlackType Black;
   const static RedType   Red;
   const static KingType  King;
+  const static PawnType  Pawn;
 
 private:
   State _board[_rows][_columns];
@@ -109,8 +111,7 @@ public:
   void place(State color, const iPair& p) { _board[p.x][p.y] = color; }
 
   void unconditional_move(const iPair& src, const iPair& dst) {
-    State piece = at(src);
-    place(piece, dst);
+    place(at(src), dst);
     place(empty, src);
   }
 
@@ -223,6 +224,20 @@ public:
   bool is(T _, iPair p) const {
     return is(_,p.x,p.y);
   }
+
+  template<class T, class U>
+  bool is(T, U, int row, int column) const {
+    return (row >= 0) && (row < _rows)
+      && (column >= 0) && (column < _columns)
+      && T::is( at(row,column) )
+      && U::is( at(row,column) );
+  }
+
+  template<class T, class U>
+  bool is(T _, U _1, iPair p) const {
+    return is(_,_1,p.x,p.y);
+  }
+
 
   bool has_same(State state, int row, int column) const {
     return (at(row,column) & state) == state;
@@ -359,7 +374,7 @@ public:
 	  did_jump |= jump(src, iPair(dst_row, j + column_offset));
 	}}}
 
-    /* if I did jump, none of the other moves are legal to take, so return now. */
+    /* if I did jump, none of the other moves are legal to take so return now. */
     if(did_jump) return acc;
 
     /* If I didn't jump, check the free squares */

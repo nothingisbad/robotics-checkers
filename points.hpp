@@ -38,6 +38,9 @@ public:
   }
 
   bool operator!=(const Pair& p) const { return !(*this == p); }
+
+  Num& row() { return x; }
+  Num& column() { return x; }
 };
 
 template<class Num>

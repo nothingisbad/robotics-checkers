@@ -35,13 +35,9 @@ The bottom left square is (0,0), there are 8 rows [0,7].  Columns count only pla
  
   ```exec <row_begin> <column_begin> <row_end> <column_begin>```
 
-* to have the AI make one move:
+* to have the AI make one move (alternates red and black)
 
-  ```play red```
-
-  or
-
-  ```play black```
+  ```play```
 
 * to have the computer pick one move (from an ordered set of legal moves)
 

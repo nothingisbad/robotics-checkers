@@ -19,12 +19,15 @@ int main() {
   int x, y;
   AI ai;
   Move move;
-
-  cout << "* Board b:\n" << b() << endl;
+  bool is_red_turn;
 
   while(true) {
     cout << b() << endl;
-    cin >> input;
+
+    if(cin.peek() != '\n') {
+      cin >> input;
+      cin.ignore();
+    } else cin.get();
 
     if("at" == input) {
       cin >> x; cin >> y;
@@ -75,16 +78,16 @@ int main() {
     }
 
     else if("play" == input) {
-      cin >> input;
-
-      if("red" == input)
+      if(is_red_turn)
 	move = ai(Board::State::red, b());
-
       else
 	move = ai(Board::State::black, b());
 
+      is_red_turn ^= true;
+
       b.push().legal_move( move );
     }
+
 
     else if("undo" == input) {
       b.undo();
