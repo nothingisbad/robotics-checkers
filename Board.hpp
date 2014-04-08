@@ -63,10 +63,10 @@ public:
   const static PawnType  Pawn;
 
   template<class T>
-  bool is(T, State color) { return T::is(color);  }
+  static bool is(T, State color) { return T::is(color);  }
 
   template<class T, class U>
-  bool is(T, U, State color) { return T::is(color) && U::is(color);  }
+  static bool is(T, U, State color) { return T::is(color) && U::is(color);  }
 
 private:
   State _board[_rows][_columns];
@@ -94,7 +94,7 @@ private:
     else
       m.dst.y = m.capture.y;
 
-    return is(Empty, m.dst);
+    return is(Empty, at(m.dst));
   }
 
 public:
@@ -134,18 +134,18 @@ public:
     State piece = at(m.src);
 
     /* yellow checker */
-    if (piece == black) {
+    if (piece == State::black) {
       if (m.dst.row() == 0) { /* black checker is at opposite end of board */
-        //at(m.dst) |= king; /* marks checker as king */
+        place(static_cast<State>(piece | State::king), m.src); /* marks checker as king */
       }
 
     /* red checker */
-    } else if (piece == red) {
+    } else if (piece == State::red) {
       if (m.dst.row() == 7) { /* red checker is at opposite end of board */
-        //at(m.dst) |= king; /* marks checker as king */
+        place(static_cast<State>(piece | State::king), m.src); /* marks checker as king */
       }
     }
-
+    
     unconditional_move(m);
   }
 
@@ -164,7 +164,7 @@ public:
 	cout << "Illegal move" << endl;
     }
 
-    else unconditional_move(src, dst);
+    else legal_move( Move(src, dst) );
   }
 
   /* picks the nth legal move for a given color.  Ordering is basically arbitrary, but
@@ -213,8 +213,7 @@ public:
   }
 
   bool opposites(iPair a, iPair b) {
-    
-    return !is(Empty, a) && !is(Empty, b)
+    return !is(Empty, at(a) ) && !is(Empty, at(b) )
       && ((at(a) & red) != (at(b) & red));
   }
 
@@ -235,38 +234,21 @@ public:
   State at(int i, int j) const { return _board[i][j]; }
   State at(const iPair& p) const { return _board[p.x][p.y]; }
   
-  template<class T>
-  bool is(T, int row, int column) const {
-    return (row >= 0) && (row < _rows)
-      && (column >= 0) && (column < _columns)
-      && T::is( at(row,column) );
+  bool in_bounds(const iPair &p) const {
+    return p < iPair(_rows, _columns) && p >= iPair(0,0);
   }
 
-  template<class T>
-  bool is(T _, iPair p) const {
-    return is(_,p.x,p.y);
-  }
-
-  template<class T, class U>
-  bool is(T, U, int row, int column) const {
-    return (row >= 0) && (row < _rows)
-      && (column >= 0) && (column < _columns)
-      && T::is( at(row,column) )
-      && U::is( at(row,column) );
-  }
-
-  template<class T, class U>
-  bool is(T _, U _1, iPair p) const {
-    return is(_,_1,p.x,p.y);
-  }
-
-
-  bool has_same(State state, int row, int column) const {
-    return (at(row,column) & state) == state;
-  }
-
-  bool has_same(State state, iPair p) const {
-    return (at(p) & state) == state;
+  /**
+   * Returns true if testing has the attribute state,
+   * ie if state is red, has_same will return true if testing
+   *    is a red king or a red pawn.
+   *    
+   * @param state: state to test for
+   * @param testing: state being tested
+   * @return: bool if testing has the 'state' bit set
+   */
+  bool has_same(State state, State testing) const {
+    return (testing & state) == state;
   }
 
   /****************************************************************/
@@ -358,9 +340,10 @@ public:
      * @return: true if I did something
      */
     auto jump = [&](const iPair& src, const iPair& dst) -> bool {
-      if( has_same(other, dst) ) {
+      if( in_bounds(dst) && has_same(other, at(dst) ) ) {
 	move = Move( src, iPair(), dst );
 	if( jump_capture(move)) {
+	  std::cout << "Jumping" << std::endl;
 	  fn(acc, move);
 	  return true;
 	}}
@@ -368,7 +351,8 @@ public:
     };
 
     auto do_move = [&](iPair src, iPair dst) -> bool {
-      if( is(Empty, dst) ) {
+      if( in_bounds(dst) && is(Empty, at(dst) ) ) {
+	std::cout << "Moving " << src << " to "<< dst << std::endl;
 	fn(acc, Move( src, dst ) );
 	return true;
       }
@@ -381,15 +365,14 @@ public:
       dst_row = i + row_offset;
 
       for(int j = 0; j < Board::_columns; ++j) {
-	if( at(i,j) == color ) {
+	if( has_same(color, at(i,j) ) ) {
 	  src = iPair(i,j);
 
 	  /* if it's a king, flip the movement direction and run the checks in that
 	     direction */
-	  if( is(King, i,j)) {
+	  if( is(King, at(i,j) )) {
 	    did_jump |= jump(src, iPair(i - row_offset, j));
-
-	    did_jump |= jump(src, iPair(i - row_offset, j - column_offset));
+	    did_jump |= jump(src, iPair(i - row_offset, j + column_offset));
 	  }
  
 	  did_jump |= jump(src, iPair(dst_row, j));
@@ -405,11 +388,11 @@ public:
       dst_row = i + row_offset;
 
       for(int j = 0; j < Board::_columns; ++j) {
-	if( at(i,j) == color ) {
+	if( has_same(color, at(i,j)) ) {
 	  src = iPair(i,j);
-	  if( is(King, src) ) {
+	  if( is(King, at(src) ) ) {
 	    do_move(src, iPair(i - row_offset, j));
-	    do_move(src, iPair(i - row_offset, j - column_offset));
+	    do_move(src, iPair(i - row_offset, j + column_offset));
 	  }
 
 	  do_move(src, iPair(dst_row, j));
@@ -467,10 +450,10 @@ public:
     using namespace std;
 
     auto square_char = [this](int row, int j) -> char {
-      if( is(Empty, row, j) )
+      if( is(Empty, at(row, j)) )
     	return '_';
       else
-    	return (is(Red, row, j) ? 'r' : 'b') - (is(King, row,j) ? 32 : 0);
+    	return (is(Red, at(row, j)) ? 'r' : 'b') - (is(King, at(row,j)) ? 32 : 0);
     };
 
     /* top line */
@@ -492,9 +475,9 @@ public:
     return out;
   }
 
-  void print() const;
+  void print() const; /* prevent from inlining so I can invoke in debugger */
 };
-void Board::print() const { print(std::cout); }
+void Board::print() const { print(std::cout); } 
 
 std::ostream& operator<<(std::ostream &out, const Board &b) { return b.print(out); }
 
@@ -509,7 +492,7 @@ std::ostream& operator<<(std::ostream &out, const Board &b) { return b.print(out
 class UndoList {
   std::vector<Board> _list;
 public:
-  const Board& operator()() {
+  Board& operator()() {
     return _list.back();
   }
 

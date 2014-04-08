@@ -33,6 +33,13 @@ public:
   bool operator>(const Pair& p) const {
     return (x > p.x) && (y > p.y);  }
 
+  bool operator<=(const Pair& p) const {
+    return (x <= p.x) && (y <= p.y);  }
+
+  bool operator>=(const Pair& p) const {
+    return (x >= p.x) && (y >= p.y);  }
+
+
   bool operator==(const Pair& p) const {
     return (x == p.x) && (y == p.y);
   }

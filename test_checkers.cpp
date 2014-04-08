@@ -21,6 +21,10 @@ int main() {
   Move move;
   bool is_red_turn;
 
+  b() = Board(Board::empty);
+  b().place(static_cast<Board::State>(Board::red | Board::king)
+	    , iPair(0, 0));
+
   while(true) {
     cout << b() << endl;
 
@@ -85,7 +89,8 @@ int main() {
 
       is_red_turn ^= true;
 
-      b.push().legal_move( move );
+      if( move.dst != iPair(-1,-1) )
+	b.push().legal_move( move );
     }
 
 

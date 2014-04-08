@@ -72,7 +72,7 @@ class AI {
 	  : best_move(i_m), best_weight(i_max_weight), color(i_color), b(i_b) {}
       };
 
-      AccType acc = AccType(Move(),-1000,color,b);
+      AccType acc = AccType(Move(iPair(-1,-1),iPair(-1,-1)),-1000,color,b);
 
       return
 	b.move_fold< AccType >( [](AccType& a, Move m) -> void {
