@@ -62,6 +62,12 @@ public:
   const static KingType  King;
   const static PawnType  Pawn;
 
+  template<class T>
+  bool is(T, State color) { return T::is(color);  }
+
+  template<class T, class U>
+  bool is(T, U, State color) { return T::is(color) && U::is(color);  }
+
 private:
   State _board[_rows][_columns];
 
@@ -124,6 +130,22 @@ public:
     if( m.is_capture() )
       place(empty, m.capture);
 
+    /* Gets piece to determine color  */
+    State piece = at(m.src);
+
+    /* yellow checker */
+    if (piece == black) {
+      if (m.dst.row() == 0) { /* black checker is at opposite end of board */
+        //at(m.dst) |= king; /* marks checker as king */
+      }
+
+    /* red checker */
+    } else if (piece == red) {
+      if (m.dst.row() == 7) { /* red checker is at opposite end of board */
+        //at(m.dst) |= king; /* marks checker as king */
+      }
+    }
+
     unconditional_move(m);
   }
 
@@ -185,7 +207,7 @@ public:
    * @return: color of the opposing piece
    */
   static State opponent_color(State color) {
-    if( color == State::red )
+    if( is(Red, color) )
       return State::black;
     return State::red;
   }
