@@ -231,8 +231,11 @@ public:
       , acc, color);
   }
 
-  State at(int i, int j) const { return _board[i][j]; }
-  State at(const iPair& p) const { return _board[p.x][p.y]; }
+  const State at(int i, int j) const { return _board[i][j]; }
+  const State at(const iPair& p) const { return _board[p.x][p.y]; }
+
+  State& at(int i, int j) { return _board[i][j]; }
+  State& at(const iPair& p) { return _board[p.x][p.y]; }
   
   bool in_bounds(const iPair &p) const {
     return p < iPair(_rows, _columns) && p >= iPair(0,0);
