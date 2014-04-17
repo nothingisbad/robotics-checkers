@@ -14,6 +14,7 @@ int main() {
   Board b;
   Grid g(b);
 
+  g.at(0,1)++;
   cout << "Grid: \n" << g << endl;
 
   g.at(0,0) = 0;

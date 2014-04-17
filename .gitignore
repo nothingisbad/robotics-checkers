@@ -3,6 +3,7 @@ libcbc
 to-usb.sh
 gl_checkers
 test_checkers
+test_vision
 test_grid
 *.o
 OCA*
