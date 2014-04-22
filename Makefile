@@ -28,7 +28,6 @@ gl_checkers: *.hpp *.cpp
 cbc_executable: *.hpp *.cpp
 	$(CROSS_CXX) $(CBC_INCLUDES) -o cbc_executable test_checkers.cpp $(CROSS_LIBS)
 
-
 TARGETS = cbc_executable test_checkers gl_checkers
 clean:
 	@for item in $(TARGETS); do { if [ -e $${item} ]; then rm $${item} ; echo -n "cleaning up "; echo $${item} ; fi }; done	
