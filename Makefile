@@ -26,7 +26,12 @@ gl_checkers: *.hpp *.cpp
 	$(CXX) -o gl_checkers gl_checkers.cpp -lGL -lGLU `sdl2-config --cflags --libs`
 
 cbc_executable: *.hpp *.cpp
+<<<<<<< Updated upstream
 	$(CROSS_CXX) $(CBC_INCLUDES) -o cbc_executable test_checkers.cpp $(CROSS_LIBS)
+=======
+	$(CROSS_CXX) $(CBC_INCLUDE) -o cbc_executable vision_ryan.cpp ../userlib/tracklib/tracklib.o $(CROSS_LIBS)
+
+>>>>>>> Stashed changes
 
 TARGETS = cbc_executable test_checkers gl_checkers
 clean:
