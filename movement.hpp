@@ -11,6 +11,8 @@
 #include "./checkers.hpp"
 #include "./grid.hpp"
 
+#include <cbc.h>
+
 /**
  * returns -1 for input < 0, 1 for input > 0
  */
@@ -22,57 +24,46 @@ public:
   enum State { done = 0, ok = 1, reverse = 2, fail = 4 };
 
 private:
-  int _long
-    , _behind
-    , _ahead;
+  int _front_sensor
+    , _back_sensor;
 
-  bool _prev[3];
+  bool _gap_open[2];
 
-  int _position;
+  int _front_position, _back_position;
 
-  bool beam_broken(int sensor) {
-    return digital(sensor);
-  };
+  bool beam_broken(int sensor) { return digital(sensor); };
 
   bool toggle(int n) {
     bool sensed = beam_broken(n);
-    if( sensed  == _prev[n] )
+    if( sensed  == _gap_open[n] )
       return false;
     else {
-      _prev[n] = sensed;
+      _gap_open[n] = sensed;
       return true;
-    }
-  }
-
-  int sensor_lead_follow(int direction, int &lead, int &follow) {
-    if(direction > 0) {
-      lead = _ahead;
-      follow = _behind;
-    } else {
-      lead = _behind;
-      follow = _ahead;
-    }
-  }
+    }}
 
 public:
-  int grid_position() const { return _position; }
+  SensorGroup(int front, int back)
+    : _front_sensor(ahead), _back_sensor(behind), _front_position(1), _back_position(0) {}
+  
+  int grid_position() const { return _back_position; }
   
   State run(int direction) {
-    int lead;
-    if(direction > 0) {
-      lead = _ahead;
+    if(direction > 0)
       direction = 1;
-    } else {
-      lead = _behind;
+    else
       direction = -1;
-    }
     
-    if( toggle(lead) ) {
+    if( toggle(_front) )
       _position += direction;
-      if( sense(_long) && !even(_position) )
-	return running;
-    }
-    return fail;
+
+    if( toggle(_back) )
+      _back_position += direction;
+
+    if( _back_position + 1 != _front_position)
+      return fail;
+      
+    return ok;  
   }
 
   /* assuming we've counted to the desired position, keep moving towards the centered-point. */
@@ -81,21 +72,16 @@ public:
     sensor_lead_follow(direction, lead, follow);
 
     switch( beam_broken(lead) | (beam_broken(follow) << 1) ) {
-    case 0:
-      return done;
+    case 0: return done;
 
-    case 1:
-      return ok;
+    case 1: return ok;
 
-    case 2:
-      return reverse;
+    case 2: return reverse;
 
-    case 3:
-      return fail; 		/* both sensors are blocked; position marker out of place? */
+    case 3: return fail; 		/* both sensors are blocked; position marker out of place? */
     }
   }
 };
-
 
 /*************************/
 /*   ____           _    */
@@ -109,10 +95,16 @@ public:
   enum State { done = 0, seeking = 1, centering = 2 , fail = 4};
 
 private
-  static const int _max_velocity = 750
-    , _slow_velocity = 100;
+static const int _max_velocity = (750 / 8);
+  , _slow_velocity = (_max_velocity / 4)
+  , _max_acceleration = 1;
 
-  int _motor, _pos, _destination, _velocity;
+  int _motor, _pos
+    , _destination
+    , _half_way
+    , _current_velocity, _trip_max_velocity
+    , _counter
+    , _acceleration;
 
   SensorGroup _sense;
 
@@ -120,25 +112,21 @@ private
   
 public:
   /**
-   * Estimate time to move to a point
-   * If the cart on one axis doesn't have to travel as far, I should
-   * run it more slowely to save the gears and battery.
-   * 
-   * @param : distance to move
-   * @return: time it will take
-   */
-  int estimate_time(int dst) {
-    return (dst - _pos) / _max_velocity;
-  }
-
-  /**
    * Trim the velocity to arrive at approximately a given time.
    * 
    * @param time: when to arrive
    * @param dst: where to go
    */
-  void set_velocity(int time, int dst) {
-    _velocity = ((_destination - _pos) * _max_velocity) / time;
+  void set_destination(int dest) {
+    _destination = dest;
+    _half_way = (dest + _pos) / 2;
+    _trip_max_velocity = ((_destination - _pos) * _max_velocity) / time_bound;
+  }
+
+  void reset_velocity() {
+    _current_velocity = 0;
+    _counter = 0;
+    _acceleration = _max_acceleration;
   }
 
   /* A step in the movement loop, returns the state of this cart. */
@@ -147,13 +135,26 @@ public:
 
     if( sensor_state == SensorGroup::State::fail )
       goto fail_state;
-
+    
+    /* check on acceleration */
+    if( (++_counter % 50) == 0 ) {
+      _counter = 0;
+      _current_velocity != acceleration;
+      set_motor();
+    }
 
     switch( _state ) {
     case done:
       return done;
 
     case seeking:
+      if(_sense.position() == _half_way)
+	_acceleration = -_acceleration;
+
+      if(_current_velocity <= _slow_velocity
+	 || abs(_sense.position() - _destination) <= 2)
+	_acceleration = 0;
+      
       if( _sense.position() == _destination ) {
 	_state = centering;
 	_velocity = sign(_velocity) * _slow_velocity;
@@ -170,28 +171,28 @@ public:
       case SensorGroup::State::done:
 	_velocity = 0;
 	_state = done;
-
-	goto set_motor;
+	set_motor();
+	break;
 
       case SensorGroup::State::reverse:
 	_velocity = -_velocity;
-	goto set_motor;
+	set_motor();
+	break;
 
       case fail:
 	goto fail_state;
-
       }
       break;
-
 
     case fail:
       return fail;
     }
-    break;
+    return _state;
 
   fail_state:
     _velocity = 0;
     _state = fail;
+    set_motor();
 
   set_motor:
     /* todo: put the mav statement here. */
@@ -212,30 +213,94 @@ public:
  * position.
  */                        
 class Arm {
-  Cart _row, _column; 
+  Cart _row, _column;
+  const static int _hand_elevation = 0
+    , _hand_open = 1;
+
+  void open_hand() { set_servo_positon(_hand_open, open_range); }
+  void close_hand() { set_servo_positon(_hand_open, close_range); }
+
+  static void raise_hand() { set_servo_positon(_hand_elevation, up_range); }
+  void lower_hand() { set_servo_positon(_hand_elevation, down_range); }
+
+  void position_hand(int i) {
+    set_servo_position(_hand_elevation
+		       , i + get_servo_position(_hand_elevation));
+  }
+
+  struct Servos {
+    Servos() { enable_servos(); }
+    ~Servos() {
+      Arm::raise_hand();
+      disable_servos(); }};
+
 public:
   /* Absolute co-ordinant on an 8x8 grid */
   bool move_to(iPair pos) {
-    int time_row = _row.estimate_time( pos.x )
-      , time_column = _column.estimate_time( pos.y )
-      , max_time = ((time_column > time_row) ? time_column : time_row)
-      , row_state
+    int row_state
       , column_state;
 
-    _row.set_velocity( max_time );
-    _column.set_velocity( max_time);
+    _row.reset_velocity();
+    _column.reset_velocity();
 
     while( true ) {
-      switch( (row_state = _row.run()) | (column_state = _column.run()) ) {
+      switch( (row_state = _row.run()) && (column_state = _column.run()) ) {
       case done:
 	return true;
 
       case fail:
 	/* todo: retry */
 	return false;
+
+      default:
+	continue;
       }
+    }}
+
+  void pick_up_all() {
+    Servos s;
+
+    open_hand();
+    lower_hand();
+    close_hand();
+  }
+
+  void put_down_all() {
+    Servos s;
+    drop_hand();
+    open_hand();
+  }
+
+  void put_down_one() {
+    Servos s;
+    drop_hand();
+    open_hand();
+    position_hand(10);
+    close_hand();
+  }
+
+  void execute_move(Move &m) {
+    if( m.is_capture() ) {
+      move(m.capture);
+      pick_up_all();
+
+      move(m.src);
+      pick_up_all();
+      
+      move(m.dst);
+      put_down_one();
+
+      move( iPair(0,9) );
+      put_down_all();
+
+    } else {
+      move(m.src);
+      pick_up_all();
+
+      move(m.dst);
+      put_down_all();
     }
-  };
+  }
 };
 
 #endif
