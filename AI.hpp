@@ -25,71 +25,43 @@ namespace checkers_AI {
    * @return: 
    */
   int compair(int depth, Board::State color
-	      , Board b
-	      , const Move& move) {
+	      , Board b) {
     using namespace std;
 
-    struct AccType {
-      int sum;
-      Board::State opponent_color;
-      int depth;
-      Board &b;
-      AccType(int i_sum, Board::State i_color, int i_depth, Board& i_b)
-	: sum(i_sum), opponent_color(i_color), depth(i_depth), b(i_b) {}
-    };
+    int sum = 0;
+    Board::State opponent_color = b.opponent_color(color);
 
-    AccType acc(weight_move(color, b, move)
-		, b.opponent_color(color)
-		, depth - 1 , b);
+    if(depth <= 1) return 0;
 
-    b.legal_move(move);
+    b.move_fold([&](Board b) -> void {
+	sum -= compair( depth - 1
+			  , opponent_color
+			, b);
+      }, opponent_color);
 
-    if(depth <= 1)
-      return acc.sum;
-
-    return b.move_fold< AccType >([](AccType& a, Move m) -> void {
-	a.sum -= compair( a.depth - 1
-			  , a.opponent_color
-			  , a.b
-			  , m);
-      }
-      , acc
-      , acc.opponent_color
-      ).sum;
+      return sum;
   }
 }
 
 class AI {
   public:
-    Move operator()(Board::State color, const Board& b) {
+    Board operator()(Board::State color, const Board& b) {
       using namespace std;
-      struct AccType {
-	Move best_move;
-	int best_weight;
-	Board::State color;
-	Board b;
-	AccType(Move i_m, int i_max_weight, Board::State i_color, Board i_b)
-	  : best_move(i_m), best_weight(i_max_weight), color(i_color), b(i_b) {}
-      };
+      int best_weight = -100;
+      Board best_move;
 
-      AccType acc = AccType(Move(iPair(-1,-1),iPair(-1,-1)),-1000,color,b);
+      b.move_fold( [&](Board bb) -> void {
+	  int weight = checkers_AI::compair(3, color, bb);
 
-      return
-	b.move_fold< AccType >( [](AccType& a, Move m) -> void {
-	    int weight = checkers_AI::compair(3, a.color, a.b, m);
-
-	    // std::cout << "Move: " << m.dst << " weight: " << weight << std::endl;
-	    if( weight > a.best_weight ) {
-	      a.best_weight = weight;
-	      a.best_move = m;
-	    }
+	  if( weight > best_weight ) {
+	    best_weight = weight;
+	    best_move = bb;
 	  }
-	  , acc
-	  , color
-	  ).best_move;
+	} , color );
+
+      return best_move;
     }
 
   };
-
 
 #endif

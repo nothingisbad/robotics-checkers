@@ -12,18 +12,6 @@
 #include "points.hpp"
 #include "Board.hpp"
 
-/* convert a co-ordinant relitive to the black daigonals (playable squares) to
-   a co-ordinant on an 8x8 grid */
-iPair diag2abs(const iPair &in) {
-  return iPair(in.x, in.y * 2 + (even(in.x) ? 0 : 1));
-}
-
-/* convert a co-ordinant relitive to an (absolute) 8x8 grid the black daigonals
-   (playable squares) on a checker board  */
-iPair abs2diag(const iPair &in) {
-  return iPair(in.x, (in.y - (even(in.x) ? 0 : 1)) / 2);
-}
-
 /**
  * Keeps an 8x8 grid with a short integer representing the state of each square, as captured by vision.
  * Unlike the Board class, Grid keeps an element for every square on the board, occuable or not.
@@ -73,7 +61,7 @@ public:
 	else
 	  at( diag2abs(iPair(i,j)) ) = Board::is(Board::Red, b.at(i,j)) ? 1 : -1;
       }}}
- 
+  /* Putting (0,0) at the bottom left */
   std::ostream& print(std::ostream &out) const {
     for(int i = 0; i < _m; ++i)
       out << "___";
@@ -91,7 +79,6 @@ public:
     }
     return out;
   }
-  
 };
 
 std::ostream& operator<<(std::ostream &out, const Grid &g) { return g.print(out); }

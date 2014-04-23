@@ -7,7 +7,7 @@
  */
 
 int main() {
-  // execl("/mnt/browser/usb/cbc_executable", "cbc_executable");
+  // execv("/mnt/browser/usb/cbc_executable", "cbc_run.c");
   system("/mnt/browser/usb/cbc_executable");
   return 0;
 }
