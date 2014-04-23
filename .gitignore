@@ -3,4 +3,9 @@ libcbc
 to-usb.sh
 gl_checkers
 test_checkers
+test_grid
+test_move_fold
+test_vision
+test_ai
 *.o
+*.pdn

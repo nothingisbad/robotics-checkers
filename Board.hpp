@@ -13,8 +13,17 @@
 #include <ostream>
 #include <tuple>
 #include <type_traits>
+#include <cstdint>
+#include <array>
+#include <functional>
 
 #include "./points.hpp"
+
+template<class Num>
+bool even(Num i) {
+  static_assert( std::is_integral<Num>::value, "even is only defined for integral numbers." );
+  return i % 2 == 0;
+}
 
 /**
  * Three pairs currently represent a move
@@ -34,14 +43,11 @@ struct Move {
   Move(const iPair& s, const iPair& d, const iPair& c) : src(s), dst(d), capture(c) {}
 };
 
-class Grid;
-
-template<class Num>
-bool even(Num i) {
-  static_assert( std::is_integral<Num>::value
-		 , "even is only defined for integral numbers." );
-  return i % 2 == 0;
+std::ostream& operator<<(std::ostream &out, const Move &m) {
+  return out << m.src << "->" << m.dst;
 }
+
+class Grid;
 
 class Board {
 public:
@@ -81,8 +87,6 @@ private:
    * @return: false if jump could not be carried out (ie due to obstructing peice).
    */
   bool jump_capture(Move &m) const {
-    iPair direction;
-
     if(m.src.x < m.capture.x)
       m.dst.x = m.capture.x + 1;
     else
@@ -96,7 +100,6 @@ private:
 
     return is(Empty, at(m.dst));
   }
-
 public:
   /****************************************************/
   /*  __  __                                     _    */
@@ -134,7 +137,7 @@ public:
     State piece = at(m.src);
 
     /* yellow checker */
-    if (piece == State::black) {
+    if(piece == State::black) {
       if (m.dst.row() == 0) { /* black checker is at opposite end of board */
         place(static_cast<State>(piece | State::king), m.src); /* marks checker as king */
       }
@@ -169,27 +172,26 @@ public:
 
   /* picks the nth legal move for a given color.  Ordering is basically arbitrary, but
      each legal move maps to a unique n. */
-  Move nth_move(State color, int nth_move) const {
+  Board nth_move(State color, int nth_move) const {
     using namespace std;
-    auto acc = make_tuple((int)0, Move(iPair(0,0), iPair(0,0)));
+    Board store_move;
+    cout << "Move " << nth_move << endl;
 
-    auto nth_move_helper = [](std::tuple<int,Move>& a, Move m) -> void  {
-       using namespace std;
-       if(get<0>(a) < 0)
-	 return;
+    move_fold( [&](const Board& b) -> void  {
+	using namespace std;
+	if(nth_move < 0)
+	  return;
 
-       if( get<0>(a) == 0 )
-	 get<1>(a) = m;
+	if( nth_move == 0 ) {
+	  cout << "Stored: " << endl;
+	  b.print();
+	  store_move = b;
+	}
 
-       --get<0>(a);
-    };
+	--nth_move;
+      }, color);
 
-    auto result = move_fold< decltype(acc) >(nth_move_helper, acc, color);
-
-    if(get<0>(result) == -1)
-      return get<1>(result);
-    
-    return Move(iPair(-1,-1), iPair(-1,-1));
+    return store_move;
   }
 
   /*********************************/
@@ -217,22 +219,44 @@ public:
       && ((at(a) & red) != (at(b) & red));
   }
 
-  /**
-   * counts the number of moves which can be made for the parameter color from
-   * the current board state.
-   * 
-   * @param color: color I'm solving for
-   * @return: the count.
-   */
-  int liberties(State color) const {
-    int acc = 0;
-    return
-      move_fold<int>( [](int& acc, Move _) -> void { ++acc; }
-      , acc, color);
+  void color_ordered(State color, std::array<float,32> &result, float piece_count) const {
+    float value;
+
+    auto piece_weight = [&](int i, int j) -> float {
+      if(is(Empty, at(i,j)))  return 0;
+
+      if(is(King, at(i,j)))
+	return is(Red, at(i,j)) ? 1.3 : -1.3;
+      
+      return is(Red, at(i,j)) ? 1 : -1;
+    };
+    
+    if(color == State::red) {
+      for(int i = 0; i < _rows; ++i)
+	for(int j = 0; j < _columns; ++j) {
+	  value = piece_weight(i,j);
+	  std::cout << value << " ";
+
+	  result[i * _columns + j] = value;
+	  piece_count += value;
+	}}
+
+    else {
+      for(int i = _rows - 1; i >= 0; --i) {
+	for(int j = _columns - 1; j >= 0; --j) {
+	  value = -piece_weight(i,j);
+
+	  result[i * _columns + j] = value;
+	  piece_count += value;
+	}}}
   }
 
   State at(int i, int j) const { return _board[i][j]; }
   State at(const iPair& p) const { return _board[p.x][p.y]; }
+
+  State& at(int i, int j) { return _board[i][j]; }
+  State& at(const iPair& p) { return _board[p.x][p.y]; }
+
   
   bool in_bounds(const iPair &p) const {
     return p < iPair(_rows, _columns) && p >= iPair(0,0);
@@ -301,26 +325,22 @@ public:
   /* | |  | | \__ \ (__  */
   /* |_|  |_|_|___/\___| */
   /***********************/
-  template<class R>
-  struct FoldFnType { typedef void (*type)(R&, Move); };
-
   /**
-   * Folds fn across all availible moves for given color with accumulator.
-   * The accumulator is passed along by reference, so be careful.
+   * Folds fn across all availible moves for given color.  It's
+   * assumed fn will be bound to whatever data it is trying to accumulate.
    * 
-   * fn is of type void (*fn)(acc&, const Move&)
+   * fn is of type void (*fn)(const Move&)
    * 
-   * @tparam R: accumulator type
    * @param fn: function being folded
-   * @param acc: accumulator
    * @param color: type who's moves are being evaluated
    * @return: the final state of the accumulator
    */
-  template<class R>
-  R move_fold(const typename FoldFnType<R>::type fn, R acc, State color) const {
+  template<class FnType>
+  void move_fold(const FnType fn, State color) const {
     using namespace std;
     State other = opponent_color(color);
     Move move;
+    Board post_move = *this;
 
     int row_offset
       , column_offset
@@ -336,24 +356,42 @@ public:
 
     bool did_jump = false;
 
-    /**
-     * @return: true if I did something
-     */
-    auto jump = [&](const iPair& src, const iPair& dst) -> bool {
-      if( in_bounds(dst) && has_same(other, at(dst) ) ) {
-	move = Move( src, iPair(), dst );
-	if( jump_capture(move)) {
-	  std::cout << "Jumping" << std::endl;
-	  fn(acc, move);
+    std::function<bool (const Board *tmp, const iPair&)> jump_check;
+
+    /* multiple jumps are treated recursively, so I need to pass in which board
+       I'm acting on (the call stack will deal with allocation) */
+    auto jump = [&](const Board* base, const iPair& src, const iPair& dst) -> bool {
+      if( in_bounds(dst) && has_same(other, base->at(dst) ) ) {
+	Move move = Move( src, iPair(), dst );
+
+	if( base->jump_capture(move)) {
+	  Board tmp = *base;
+	  tmp.legal_move(move);
+	  fn( tmp );
+	  jump_check(&tmp, move.dst);
+
 	  return true;
 	}}
       return false;
     };
 
+    jump_check = [&](const Board *tmp, const iPair& src) -> bool {
+      bool did_jump = false;
+      if( is(King, tmp->at(src)) ) {
+	did_jump |= jump(tmp, src, src + iPair(-row_offset, 0));
+	did_jump |= jump(tmp, src, src + iPair(-row_offset, column_offset));
+      }
+ 
+      did_jump |= jump(tmp, src, src + iPair(row_offset, 0));
+      did_jump |= jump(tmp, src, src + iPair(row_offset, column_offset));
+      return did_jump;
+    };
+
     auto do_move = [&](iPair src, iPair dst) -> bool {
       if( in_bounds(dst) && is(Empty, at(dst) ) ) {
-	std::cout << "Moving " << src << " to "<< dst << std::endl;
-	fn(acc, Move( src, dst ) );
+	post_move.unconditional_move( Move( src, dst ) );
+	fn( post_move );
+	post_move = *this;
 	return true;
       }
       return false;
@@ -365,22 +403,12 @@ public:
       dst_row = i + row_offset;
 
       for(int j = 0; j < Board::_columns; ++j) {
-	if( has_same(color, at(i,j) ) ) {
-	  src = iPair(i,j);
-
-	  /* if it's a king, flip the movement direction and run the checks in that
-	     direction */
-	  if( is(King, at(i,j) )) {
-	    did_jump |= jump(src, iPair(i - row_offset, j));
-	    did_jump |= jump(src, iPair(i - row_offset, j + column_offset));
-	  }
- 
-	  did_jump |= jump(src, iPair(dst_row, j));
-	  did_jump |= jump(src, iPair(dst_row, j + column_offset));
-	}}}
+	if( has_same(color, at(i,j) ) )
+	  did_jump |= jump_check(this, iPair(i,j));
+      }}
 
     /* if I did jump, none of the other moves are legal to take so return now. */
-    if(did_jump) return acc;
+    if(did_jump) return;
 
     /* If I didn't jump, check the free squares */
     for(int i = 0; i < Board::_rows; ++i) {
@@ -398,14 +426,12 @@ public:
 	  do_move(src, iPair(dst_row, j));
 	  do_move(src, iPair(dst_row, j + column_offset));
 	}}}
-    return acc;
   }
                    
   /*************/
   /* Overloads */
   /*************/
   Board& operator=(const Board &input) {
-
     for(int i = 0; i < _rows; ++i)
       for(int j = 0; j < _columns; ++j)
 	_board[i][j] = input._board[i][j];
@@ -463,13 +489,13 @@ public:
 
     for(int i = _rows - 1; i >= 0; --i) {
       out << "|";
-      if(1 == (i % 2)) out << "_|";
+      if( !even(i) ) out << "_|";
 
       for(int j = 0; j < _columns - 1; ++j)
 	out << square_char(i,j) << "|_|";
       out << square_char(i, _columns - 1) << "|";
 
-      if(0 == (i % 2)) out << "_|";
+      if( even(i) ) out << "_|";
       out << "\n";
     }
     return out;
@@ -481,6 +507,32 @@ void Board::print() const { print(std::cout); }
 
 std::ostream& operator<<(std::ostream &out, const Board &b) { return b.print(out); }
 
+/**************************************/
+/*  _   _      _                      */
+/* | | | | ___| |_ __   ___ _ __ ___  */
+/* | |_| |/ _ \ | '_ \ / _ \ '__/ __| */
+/* |  _  |  __/ | |_) |  __/ |  \__ \ */
+/* |_| |_|\___|_| .__/ \___|_|  |___/ */
+/*              |_|                   */
+/**************************************/
+/* convert a co-ordinant relitive to the black daigonals (playable squares) to
+   a co-ordinant on an 8x8 grid */
+iPair diag2abs(const iPair &in) {
+  return iPair(in.x, in.y * 2 + (even(in.x) ? 0 : 1));
+}
+
+/* convert a co-ordinant relitive to an (absolute) 8x8 grid the black daigonals
+   (playable squares) on a checker board  */
+iPair abs2diag(const iPair &in) {
+  return iPair(in.x, (in.y - (even(in.x) ? 1 : 0)) / 2);
+}
+
+/* takes a pdn style move and puts it into the 4x8 Board space*/
+iPair canonical2diag(int i) {
+  --i; 			/* counts 1 as the top left  */
+  return iPair( ((31 - i) / Board::_columns), i % Board::_columns);
+}
+
 
 /***********************************************/
 /*  _   _           _         _     _     _    */
@@ -490,8 +542,9 @@ std::ostream& operator<<(std::ostream &out, const Board &b) { return b.print(out
 /*  \___/|_| |_|\__,_|\___/  |_____|_|___/\__| */
 /***********************************************/
 class UndoList {
-  std::vector<Board> _list;
 public:
+  std::vector<Board> _list;
+
   Board& operator()() {
     return _list.back();
   }
