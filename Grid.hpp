@@ -46,7 +46,7 @@ public:
   void squelch(char threshold) {
     for(int i = 0; i < _n; ++i)
       for(int j = 0; j < _m; ++j)
-	at(i,j) = (abs(at(i,j)) > threshold) ? at(i,j) : 0;
+	at(i,j) = (abs(at(i,j)) >= threshold) ? at(i,j) : 0;
   }
   
   Grid() : _grid{} {}

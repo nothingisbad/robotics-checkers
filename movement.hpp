@@ -217,11 +217,17 @@ class Arm {
   const static int _hand_elevation = 0
     , _hand_open = 1;
 
-  void open_hand() { set_servo_positon(_hand_open, open_range); }
-  void close_hand() { set_servo_positon(_hand_open, close_range); }
+  void open_hand() {
+    set_servo_positon(_hand_open, 1694);  }
+  void close_hand() {
+    set_servo_positon(_hand_open, 990);  }
 
-  static void raise_hand() { set_servo_positon(_hand_elevation, up_range); }
-  void lower_hand() { set_servo_positon(_hand_elevation, down_range); }
+  static void raise_hand() {
+    set_servo_positon(_hand_elevation, 1987);  }
+
+  void lower_hand() {
+    set_servo_positon(_hand_elevation, 930);
+  }
 
   void position_hand(int i) {
     set_servo_position(_hand_elevation

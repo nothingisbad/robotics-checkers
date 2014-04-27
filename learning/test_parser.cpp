@@ -16,7 +16,8 @@ using namespace std;
 using namespace grammar;
 
 int main() {
-  Parser parse = parse_pdn();
+  Board b;
+  Parser parse = parse_pdn(b);
   {
     std::ifstream input("./OCA/sample.pdn");
     foreach_line(input, parse);
