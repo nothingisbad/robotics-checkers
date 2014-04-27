@@ -70,8 +70,8 @@ public:
     for(int i = _n - 1; i >= 0; --i) {
       out << "|";
       for(int j = 0; j < _m; ++j) {
-	if( at(i,j) != 0 )
-	  out << std::setw(2) << at(i,j) << "|";
+	if( at(j,i) != 0 )
+	  out << std::setw(2) << at(j,i) << "|";
 	else
 	  out << "__|";
       }
@@ -85,14 +85,15 @@ std::ostream& operator<<(std::ostream &out, const Grid &g) { return g.print(out)
 
 Board::Board(const Grid& g) {
   char grid_value;
-  for(int i = 0; i < _rows; ++i)
-    for(int j = 0; j < _columns; ++j) {
+  for(int j = 0; j < _columns; ++j) {
+    for(int i = 0; i < _rows; ++i) {
       grid_value = g.at( diag2abs(iPair(i,j)) );
       if(grid_value == 0)
 	at(i,j) = Board::empty;
       else
 	at(i,j) = grid_value > 0 ? Board::red : Board::black;
     }
+  }
 }
 
 #endif
