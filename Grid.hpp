@@ -48,6 +48,16 @@ public:
       for(int j = 0; j < _m; ++j)
 	at(i,j) = (abs(at(i,j)) >= threshold) ? at(i,j) : 0;
   }
+
+  Grid rotate(){
+    Grid g;
+    for( int i=0; i<_n; ++i) {
+      for (int j=0; j<_m; ++j) {
+	g.at(_n-j-1, i) = at(i,j);
+      }
+    }
+    return g;
+  }
   
   Grid() : _grid{} {}
 
@@ -70,8 +80,8 @@ public:
     for(int i = _n - 1; i >= 0; --i) {
       out << "|";
       for(int j = 0; j < _m; ++j) {
-	if( at(j,i) != 0 )
-	  out << std::setw(2) << at(j,i) << "|";
+	if( at(i,j) != 0 )
+	  out << std::setw(2) << at(i,j) << "|";
 	else
 	  out << "__|";
       }
