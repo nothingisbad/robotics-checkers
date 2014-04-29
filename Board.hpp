@@ -19,10 +19,30 @@
 
 #include "./points.hpp"
 
+
+/*********************************/
+/*  _  _     _                   */
+/* | || |___| |_ __  ___ _ _ ___ */
+/* | __ / -_) | '_ \/ -_) '_(_-< */
+/* |_||_\___|_| .__/\___|_| /__/ */
+/*            |_|                */
+/*********************************/
 template<class Num>
 bool even(Num i) {
   static_assert( std::is_integral<Num>::value, "even is only defined for integral numbers." );
   return i % 2 == 0;
+}
+
+bool color_equal(Board::State color, Board b1, Board b2) {
+  for(int i=0; i < Board::_rows; i++) {
+    for(int j=0; j < Board::_columns; j++) {
+      iPair a(i,j);
+      if ( (has_same(color, b1.at(a)) && !has_same(color, b2.at(a)))
+	   || has_same(color, b2.at(a)) )
+	return false;
+    }
+  }
+  return true;
 }
 
 /**
@@ -81,6 +101,13 @@ static bool is(T, U, State color) { return T::is(color) && U::is(color);  }
 bool has_same(State state, State testing) { return (testing & state) == state; }
 
 
+/*********************************/
+/*  ____                      _  */
+/* | __ )  ___   __ _ _ __ __| | */
+/* |  _ \ / _ \ / _` | '__/ _` | */
+/* | |_) | (_) | (_| | | | (_| | */
+/* |____/ \___/ \__,_|_|  \__,_| */
+/*********************************/
 class Board {
 public:
   static const int _rows = 8
