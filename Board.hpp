@@ -120,17 +120,6 @@ public:
   /* | |  | | (_) \ V /  __/ | | | | |  __/ | | | |_  */
   /* |_|  |_|\___/ \_/ \___|_| |_| |_|\___|_| |_|\__| */
   /****************************************************/
-
-  /**
-   * Put a pice on the board
-   * 
-   * @param color: State of the piece (red/black/king/empty)
-   * @param row: row to place the piece
-   * @param column: column to place the piece
-   */
-  /* void place(State color, int row, int column) { _board[row][column] = color; } */
-  /* void place(State color, const iPair& p) { _board[p.x][p.y] = color; } */
-
   void unconditional_move(const iPair& src, const iPair& dst) {
     at(dst) = at(src);
     at(src) = State::empty;
