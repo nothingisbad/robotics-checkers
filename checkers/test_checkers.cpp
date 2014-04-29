@@ -35,8 +35,8 @@ int main() {
   Move move;
   bool is_red_turn = true;
 
-  b.push() = Board(State::empty);
-  b().at(7,0) = State::red;
+  b.push() = Board(Board::empty);
+  b().place(Board::red, 7,0);
   /* b().place(Board::black, 1,0); */
   /* b().place(Board::black, 3,1); */
 
@@ -95,9 +95,9 @@ int main() {
       cout << "From\n" << tmp << endl;
 
       if(input == "red")
-      	tmp = tmp.nth_move(State::red, x);
+      	tmp = tmp.nth_move(Board::State::red, x);
       else
-      	tmp = tmp.nth_move(State::black, x);
+      	tmp = tmp.nth_move(Board::State::black, x);
 
       cout << "To\n" << tmp << endl;
       b.push() = tmp;

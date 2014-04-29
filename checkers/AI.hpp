@@ -11,7 +11,7 @@
 #include "./Board.hpp"
 
 namespace checkers_AI {
-  int weight_move(State color, const Board& b, const Move& m) {
+  int weight_move(Board::State color, const Board& b, const Move& m) {
     if( m.is_capture() )
       return 1;
 
@@ -24,12 +24,12 @@ namespace checkers_AI {
    * @param depth: must be >= 1 to start
    * @return: 
    */
-  int compair(int depth, State color
+  int compair(int depth, Board::State color
 	      , Board b) {
     using namespace std;
 
     int sum = 0;
-    State opponent_color = b.opponent_color(color);
+    Board::State opponent_color = b.opponent_color(color);
 
     if(depth <= 1) return 0;
 
@@ -45,7 +45,7 @@ namespace checkers_AI {
 
 class AI {
   public:
-    Board operator()(State color, const Board& b) {
+    Board operator()(Board::State color, const Board& b) {
       using namespace std;
       int best_weight = -100;
       Board best_move;

@@ -23,6 +23,7 @@ public:
   const static int _n = 8
     , _m = 8;
 private:
+  typedef Board::State State;
   short _grid[_n][_m];
 public:
   short& at(int i, int j) { return _grid[i][j]; }
@@ -54,11 +55,11 @@ public:
     clear();
     for(int i = 0; i < b._rows; ++i){
       for(int j = 0; j < b._columns; ++j) {
-	State board_value = b.at(i,j);
-	if( is(Empty, board_value))
+	Board::State board_value = b.at(i,j);
+	if(Board::is(Board::Empty, board_value))
 	  at( diag2abs(iPair(i,j)) ) = 0;
 	else
-	  at( diag2abs(iPair(i,j)) ) = is(Red, b.at(i,j)) ? 1 : -1;
+	  at( diag2abs(iPair(i,j)) ) = Board::is(Board::Red, b.at(i,j)) ? 1 : -1;
       }}}
   /* Putting (0,0) at the bottom left */
   std::ostream& print(std::ostream &out) const {
@@ -88,9 +89,9 @@ Board::Board(const Grid& g) {
     for(int j = 0; j < _columns; ++j) {
       grid_value = g.at( diag2abs(iPair(i,j)) );
       if(grid_value == 0)
-	at(i,j) = State::empty;
+	at(i,j) = Board::empty;
       else
-	at(i,j) = grid_value > 0 ? State::red : State::black;
+	at(i,j) = grid_value > 0 ? Board::red : Board::black;
     }
 }
 

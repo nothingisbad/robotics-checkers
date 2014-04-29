@@ -42,7 +42,7 @@ public:
 
   /* MetaLayer< Nums<36 + 16 + 1> */
 
-  float apply(State color, const Board& board) {
+  float apply(Board::State color, const Board& board) {
     using namespace std;
     BoardNet::Feed board_feed;
     Output::Feed output_feed;

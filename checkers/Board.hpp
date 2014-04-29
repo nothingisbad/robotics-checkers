@@ -49,42 +49,30 @@ std::ostream& operator<<(std::ostream &out, const Move &m) {
 
 class Grid;
 
-enum State {  empty = 0, black = 1, red = 2, king = 4 };
-  
-struct EmptyType { static bool is(const State &s) { return s == empty; } };
-struct BlackType { static bool is(const State &s) { return s & black; } };
-struct RedType { static bool is(const State &s) { return s & red; } };
-struct KingType { static bool is(const State &s) { return s & king; }};
-struct PawnType { static bool is(const State &s) { return !(s & king); }};
-
-const static EmptyType Empty;
-const static BlackType Black;
-const static RedType   Red;
-const static KingType  King;
-const static PawnType  Pawn;
-
-template<class T>
-static bool is(T, State color) { return T::is(color);  }
-
-template<class T, class U>
-static bool is(T, U, State color) { return T::is(color) && U::is(color);  }
-
-/**
- * Returns true if testing has the attribute state,
- * ie if state is red, has_same will return true if testing
- *    is a red king or a red pawn.
- *    
- * @param state: state to test for
- * @param testing: state being tested
- * @return: bool if testing has the 'state' bit set
- */
-bool has_same(State state, State testing) { return (testing & state) == state; }
-
-
 class Board {
 public:
   static const int _rows = 8
     , _columns = 4;
+
+  enum State {  empty = 0, black = 1, red = 2, king = 4 };
+  
+  struct EmptyType { static bool is(const State &s) { return s == empty; } };
+  struct BlackType { static bool is(const State &s) { return s & black; } };
+  struct RedType { static bool is(const State &s) { return s & red; } };
+  struct KingType { static bool is(const State &s) { return s & king; }};
+  struct PawnType { static bool is(const State &s) { return !(s & king); }};
+
+  const static EmptyType Empty;
+  const static BlackType Black;
+  const static RedType   Red;
+  const static KingType  King;
+  const static PawnType  Pawn;
+
+  template<class T>
+  static bool is(T, State color) { return T::is(color);  }
+
+  template<class T, class U>
+  static bool is(T, U, State color) { return T::is(color) && U::is(color);  }
 
 private:
   State _board[_rows][_columns];
@@ -128,12 +116,12 @@ public:
    * @param row: row to place the piece
    * @param column: column to place the piece
    */
-  /* void place(State color, int row, int column) { _board[row][column] = color; } */
-  /* void place(State color, const iPair& p) { _board[p.x][p.y] = color; } */
+  void place(State color, int row, int column) { _board[row][column] = color; }
+  void place(State color, const iPair& p) { _board[p.x][p.y] = color; }
 
   void unconditional_move(const iPair& src, const iPair& dst) {
-    at(dst) = at(src);
-    at(src) = State::empty;
+    place(at(src), dst);
+    place(empty, src);
   }
 
   /* unconditional move */
@@ -143,7 +131,7 @@ public:
   void legal_move(const Move& m) {
     /* Jump */
     if( m.is_capture() )
-      at(m.capture) = State::empty;
+      place(empty, m.capture);
 
     /* Gets piece to determine color  */
     State piece = at(m.src);
@@ -151,13 +139,13 @@ public:
     /* yellow checker */
     if(piece == State::black) {
       if (m.dst.row() == 0) { /* black checker is at opposite end of board */
-	at(m.src) = static_cast<State>(piece | State::king); /* marks checker as king */
+        place(static_cast<State>(piece | State::king), m.src); /* marks checker as king */
       }
 
-      /* red checker */
+    /* red checker */
     } else if (piece == State::red) {
       if (m.dst.row() == 7) { /* red checker is at opposite end of board */
-	at(m.src) = static_cast<State>(piece | State::king); /* marks checker as king */
+        place(static_cast<State>(piece | State::king), m.src); /* marks checker as king */
       }
     }
     
@@ -273,6 +261,19 @@ public:
     return p < iPair(_rows, _columns) && p >= iPair(0,0);
   }
 
+  /**
+   * Returns true if testing has the attribute state,
+   * ie if state is red, has_same will return true if testing
+   *    is a red king or a red pawn.
+   *    
+   * @param state: state to test for
+   * @param testing: state being tested
+   * @return: bool if testing has the 'state' bit set
+   */
+  bool has_same(State state, State testing) const {
+    return (testing & state) == state;
+  }
+
   /****************************************************************/
   /*   ____                _                   _                  */
   /*  / ___|___  _ __  ___| |_ _ __ _   _  ___| |_ ___  _ __ ___  */
@@ -282,18 +283,20 @@ public:
   /****************************************************************/
   Board() {
     int i, j;
-    for(i = 0; i < 3; ++i)
-      for(j = 0; j < _columns; ++j)
-	at(i,j) = State::red;
+    for(i = 0; i < 3; ++i) {
+      for(j = 0; j < _columns; ++j) {
+	place(red, i, j);
+      }}
 
-    for(i = 3; i < 5; ++i)
-      for(j = 0; j < _columns; ++j)
-	at(i, j) = State::empty;
+    for(i = 3; i < 5; ++i) {
+      for(j = 0; j < _columns; ++j) {
+	place(empty, i, j);
+      }}
 
-    for(i = 5; i < _rows; ++i)
-      for(j = 0; j < _columns; ++j)
-	at(i,j) = State::black;
-
+    for(i = 5; i < _rows; ++i) {
+      for(j = 0; j < _columns; ++j) {
+	place(black, i, j);
+      }}
   }
 
   Board(const Board& b) {
@@ -335,7 +338,6 @@ public:
   void move_fold(const FnType fn, State color) const {
     using namespace std;
     State other = opponent_color(color);
-    Move move;
     Board post_move = *this;
 
     int row_offset
@@ -473,9 +475,9 @@ public:
 
     auto square_char = [this](int row, int j) -> char {
       if( is(Empty, at(row, j)) )
-	return '_';
+    	return '_';
       else
-	return (is(Red, at(row, j)) ? 'r' : 'b') - (is(King, at(row,j)) ? 32 : 0);
+    	return (is(Red, at(row, j)) ? 'r' : 'b') - (is(King, at(row,j)) ? 32 : 0);
     };
 
     /* top line */

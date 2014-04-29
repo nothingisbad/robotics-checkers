@@ -2,18 +2,17 @@ INCLUDE := -I../nnet
 CBC_INCLUDE := $(INCLUDE) -I../userlib/libcbc/src/ -I../userlib/tracklib 
 
 CROSS_CXX ?= arm-linux-gnueabi-g++ 
-CROSS_CXX := $(CROSS_CXX) -std=c++0x -Wall -static-libstdc++ 
+CROSS_CXX := $(CROSS_CXX) -std=c++0x -Wall 
 
 CXX ?= g++ 
 CXX := $(CXX) -std=c++0x -Wall -ggdb $(INCLUDE) $(FLAGS)
 #CXX = clang -std=c++11 -stdlib=libc++ -lc++ 
 
 # let the cross-compiler toolchain should include the stdc++ libs.
-#$(CROSS_LIBS_DIR)/libstdc++.so
-#$(CROSS_LIBS_DIR)/tracklib.o 
+# $(CROSS_LIBS_DIR)/libstdc++.so
 
 CROSS_LIBS_DIR = ../cross-libs
-CROSS_LIBS = $(CROSS_LIBS_DIR)/libgcc_s.so $(CROSS_LIBS_DIR)/init.o $(CROSS_LIBS_DIR)/libpthread-2.8.so $(CROSS_LIBS_DIR)/libm-2.8.so $(CROSS_LIBS_DIR)/cbc.o $(CROSS_LIBS_DIR)/process.o $(CROSS_LIBS_DIR)/compat.o $(CROSS_LIBS_DIR)/shared_mem.o 
+CROSS_LIBS = $(CROSS_LIBS_DIR)/libgcc_s.so $(CROSS_LIBS_DIR)/init.o $(CROSS_LIBS_DIR)/libpthread-2.8.so $(CROSS_LIBS_DIR)/libm-2.8.so $(CROSS_LIBS_DIR)/cbc.o $(CROSS_LIBS_DIR)/process.o $(CROSS_LIBS_DIR)/compat.o $(CROSS_LIBS_DIR)/shared_mem.o $(CROSS_LIBS_DIR)/tracklib.o
 
 test_checkers: AI.hpp NN_AI.hpp Board.hpp test_checkers.cpp
 	$(CXX) -o test_checkers test_checkers.cpp
