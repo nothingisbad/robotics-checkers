@@ -11,11 +11,15 @@
 
 #include "./Grid.hpp"
 #include "./points.hpp"
-#include "./hsv.hpp"
+#include "./Track.hpp"
+
+#include <nnet/utility.hpp>
 
 #include <cbc.h>
 
 using namespace std;
+
+static const int size_threshold = 25;
 
 typedef array<array<float,2>,2> Transform;
 
@@ -39,86 +43,107 @@ iPair capture_point(int channel, int index) {
 }
 
 /* damn.  If only we had monads. */
-iPair grid_position(const iPair& pixel, const Transform& transform) {
+iPair grid_position(const fPair& pixel, const Transform& transform) {
   int col, row;
     
   col = transform[0][0] * pixel.x  + transform[0][1] * pixel.y;
-  row = transform[1][0] * pixel.x  + transform[1][1] * pixel.y;
+  row = transform[1][0] * pixel.x  + transform[1][1] * pixel.y + 0.5;
     
-  return iPair( -row , col );
+  return iPair( -row, col );
 }
 
-void capture_color(Grid &g, const iPair& origin, int channel, const Transform& transform) {
+void capture_color(Grid &g, const fPair& origin, int channel, const Transform& transform) {
   iPair tmp;
-  for(int i = 0; (i < 10) && track_size(channel,i) > 40; ++i) {
-    tmp = grid_position(capture_point(channel, i) - origin, transform);
-    /* cout << "looking at " << tmp << " size " << track_size(channel,i) << endl; */
+  for(int i = 0; (i < 10) && track_size(channel,i) > size_threshold; ++i) {
+    tmp = grid_position( fPair( capture_point(channel, i) ) - origin, transform);
+    cout << "looking at " << tmp << " x: " << setw(4) << track_x(channel,i) - origin.x   << endl;
     if(track_size(channel,i) < 90
-       && (tmp > iPair(0,0))
+       && (tmp >= iPair(0,0))
        && (tmp < iPair(8,8)) ) {
       --g.at( tmp );
     }}}
 
 int main() {
   cout << "Begin" << endl;
-  Grid g;
+  Grid g{};
+  Transform transform;
+  fPair origin, edge;
+  int frame_number
+    , frame_attempts = 0;
 
-  int i;
-  array<iPair,4> corner_marker;
+  array<iPair,4> corner_marker{};
+  track_update();
 
-  adjust_hsv(1, 4, 30, 70);
-  adjust_hsv(2, 2, 30, 70);
+  for(int i = 0; i < 4; ++i) {
 
-  /* aquire corner_markers */
- retry_markers:
-  track_update();		
-		
-  for(i = 0; i < 4; ++i)
-    corner_marker[i] = capture_point(1,i);
+    /* aquire corner_markers */
+    for(int i = 0; i < 4; ++i) 
+      corner_marker[i] = capture_point(2,i);
 
-  sort_edges(corner_marker);
+    sort_edges(corner_marker);
 
-  /* test for skew */
-  if( corner_marker[1].x >= corner_marker[2].y + 8
-      &&  corner_marker[1].x <= corner_marker[2].y - 8)
-    {
-      cout << "(skewed; x length: " << corner_marker[1].x
-	   << "y length: " << corner_marker[2].y << ")" << endl;
+    /* test for skew */
+    if( corner_marker[1].x >= corner_marker[2].y + 8
+	&&  corner_marker[1].x <= corner_marker[2].y - 8)
+      {
+	cout << "(skewed; x length: " << corner_marker[1].x
+	     << "y length: " << corner_marker[2].y << ")" << endl;}
 
-      goto retry_markers;
+    /* average the length of the four edges */
+    /* I'm taking the average, and under rotation a +y shift on the X axis would corrospond to a
+       -x shift on the Y axis */
+    fPair tmp = (corner_marker[0] - corner_marker[2]  + corner_marker[1] - corner_marker[3]).transpose();
+    tmp.y = -tmp.y;
+
+    edge = (corner_marker[1] - corner_marker[0] + corner_marker[3] - corner_marker[2])
+      + tmp;
+
+    edge = edge / 4;
+
+    float c, s;
+
+    // cout << "edge: " << edge << " corner[1] - corner[0]: " << corner_marker[1] - corner_marker[0] <<  endl;
+    // cout << "(corner[0] - corner[2]  + corner[1] - corner[3]).transpose();" << (corner_marker[0] - corner_marker[2]  + corner_marker[1] - corner_marker[3]).transpose() << endl;
+    if( abs(edge.x) > 2 && abs(edge.y) > 2 ) {
+      cout << "Rotated" << endl;
+      float hypotenuse_squared = edge.x * edge.x + edge.y * edge.y;
+
+      c = (9.0f * edge.x) / hypotenuse_squared;
+      s = (9.0f * edge.y) / hypotenuse_squared;
+    } else {
+      c = 9.0f / edge.x;
+      s = 0;
     }
 
-  cout << "have edges" << endl;
-  iPair edge = corner_marker[1] - corner_marker[0];
-  float c, s
-    , hypotenuse_squared = edge.x * edge.x + edge.y * edge.y;
+    transform = {{ array<float,2>{{c, s}}
+		   , array<float,2>{{-s, c}}}};
 
-  cout << "edge: " << edge << endl;
+    /* compensate for origin offset (markers aren't right on the corner)  */
+    origin = fPair(corner_marker[0]) + (edge / 18);
 
-  if( edge.x > 0.01 && edge.y > 0.01 ) {
-    cout << "Rotation deteced" << endl;
-    c = (8.0f * corner_marker[1].x) / hypotenuse_squared;
-    s = (8.0f * corner_marker[1].y) / hypotenuse_squared;
-  } else {
-    c = 8.0f / edge.x;
-    s = 0;
+    capture_color(g, origin, 1, transform);
+    //capture_color(g, corner_marker[0], 2, transform);
+
+
+    do {
+      sleep(0.25);
+      track_update();
+      ++frame_attempts;
+      if(frame_attempts > 20) {
+	cout << "Fucking camera froze." << endl;
+	exit(1);
+      }
+    } while( frame_number == track_get_frame() );
+    frame_number = track_get_frame();
+    frame_attempts = 0;
   }
 
-  Transform transform = {{ array<float,2>{{c, -s}}
-			   , array<float,2>{{s, c}}}};
-
-  cout << "Transform setup done; press A to continue" << endl;
-  while( !a_button() ) sleep(0.1);
-
-  for(int j = 0; j < 4; ++j) {
-    capture_color(g, corner_marker[0], 1, transform);
-    capture_color(g, corner_marker[0], 2, transform);
-
-    track_update(); 
-  }
-
+  //cout << "origin " << origin << " edge " << edge << endl;
+  cout << "transform\n";
+  print_array(transform[0]) << endl;
+  print_array(transform[1]) << endl;
   g.squelch(2);
-  cout << g << endl;
+  cout << g << flush;
 
   return 0;
 }

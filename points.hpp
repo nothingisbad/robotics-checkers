@@ -37,7 +37,8 @@ public:
   Pair operator-(const Pair& p) const {
     return Pair(x - p.x, y - p.y);  }
 
-  Pair operator/(int i) const {
+  template<class Numeric>
+  Pair operator/(Numeric i) const {
     return Pair(x / i, y / i);  }
 
   /* scalar product */
@@ -55,7 +56,6 @@ public:
   bool operator>=(const Pair& p) const {
     return (x >= p.x) && (y >= p.y);  }
 
-
   bool operator==(const Pair& p) const {
     return (x == p.x) && (y == p.y);
   }
@@ -67,6 +67,16 @@ public:
 
   Num row() const { return x; }
   Num column() const { return x; }
+
+  Pair<Num> transpose() const {
+    std::swap(x,y);
+    return *this;
+  }
+
+  Pair<Num>& transpose() {
+    std::swap(x,y);
+    return *this;
+  }
 };
 
 template<class Num>

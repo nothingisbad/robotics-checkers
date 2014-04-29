@@ -75,7 +75,7 @@ void track_init() {
 
 int track_is_new_data_available() {
   track_init();
-  return ((TrackingResults*)shared_mem_ptr(tracklib_sm_results))->frame_number != tracklib_results_snapshot.frame_number;
+  return tracklib_sm_results->shared().frame_number != tracklib_results_snapshot.frame_number;
 }
 
 void track_update()

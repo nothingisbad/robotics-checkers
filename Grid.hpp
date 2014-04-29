@@ -45,7 +45,17 @@ public:
   void squelch(char threshold) {
     for(int i = 0; i < _n; ++i)
       for(int j = 0; j < _m; ++j)
-	at(i,j) = (abs(at(i,j)) > threshold) ? at(i,j) : 0;
+	at(i,j) = (abs(at(i,j)) >= threshold) ? at(i,j) : 0;
+  }
+
+  Grid rotate(){
+    Grid g;
+    for( int i=0; i<_n; ++i) {
+      for (int j=0; j<_m; ++j) {
+	g.at(_n-j-1, i) = at(i,j);
+      }
+    }
+    return g;
   }
   
   Grid() : _grid{} {}
@@ -84,14 +94,15 @@ std::ostream& operator<<(std::ostream &out, const Grid &g) { return g.print(out)
 
 Board::Board(const Grid& g) {
   char grid_value;
-  for(int i = 0; i < _rows; ++i)
-    for(int j = 0; j < _columns; ++j) {
+  for(int j = 0; j < _columns; ++j) {
+    for(int i = 0; i < _rows; ++i) {
       grid_value = g.at( diag2abs(iPair(i,j)) );
       if(grid_value == 0)
 	at(i,j) = State::empty;
       else
 	at(i,j) = grid_value > 0 ? State::red : State::black;
     }
+  }
 }
 
 #endif

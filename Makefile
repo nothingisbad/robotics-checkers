@@ -1,5 +1,5 @@
 INCLUDE := -I../nnet
-CBC_INCLUDE := $(INCLUDE) -I../userlib/libcbc/src/ -I../userlib/tracklib 
+CBC_INCLUDE := $(INCLUDE) -I../userlib/libcbc/src/ -I../userlib/tracklib -I/home/ryan/programming/
 
 CROSS_CXX ?= arm-linux-gnueabi-g++ 
 CROSS_CXX := $(CROSS_CXX) -std=c++0x -Wall -static-libstdc++ 
