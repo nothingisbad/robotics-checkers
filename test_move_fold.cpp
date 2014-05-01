@@ -24,18 +24,19 @@ using namespace std;
 int main() {
   string input;
   Move move;
-  Board b = Board(Board::empty);
+  Board b = Board(State::empty);
 
-  b.place(Board::red, 0,0);
-  b.place(Board::black, 1,0);
-  b.place(Board::black, 3,1);
+  b.at(0,0) = State::red;
+  b.at(1,0) = State::black;
+  b.at(3,1) = State::black;
 
   cout << "Begin:\n" << b << endl;
   
   cout << "Moves:\n" << b << endl;
-  b.move_fold([&](const Board& b) {
-      cout << b << endl;
-    }, Board::red);
+  b.move_fold([&](const Board& b, const Move& m) {
+      cout << m << "\n" << b << endl;
+      return false;
+    }, State::red);
 
   return 0;
 }

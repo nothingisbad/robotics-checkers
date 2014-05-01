@@ -198,7 +198,7 @@ void track_set_model_hsv(int ch, int h_min, int h_max, int s_min, int v_min) {
     tracklib_results_snapshot.channels[ch].hsv_model[2] = s_min;
     tracklib_results_snapshot.channels[ch].hsv_model[3] = v_min;
 
-    tracklib_sm_results.write(tracklib_results_snapshot);
+    tracklib_sm_results->write(tracklib_results_snapshot);
 }
 
 void track_get_model_hsv(int ch, int *h_min, int *h_max, int *s_min, int *v_min)

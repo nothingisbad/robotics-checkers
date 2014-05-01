@@ -7,7 +7,6 @@
  */
 
 #include <vector>
-#include <track.h>
 #include <iostream>
 #include <algorithm>
 #include <tuple>
@@ -24,7 +23,10 @@
 
 using namespace std;
 
-static const int size_threshold = 25;
+static const int size_threshold = 25
+  , marker_channel = 2
+  , human_channel_A = 1
+  , human_channel_B = 0;
 
 typedef array<array<float,2>,2> Transform;
 
@@ -61,7 +63,7 @@ void capture_color(Grid &g, const fPair& origin, int channel, const Transform& t
   iPair tmp;
   for(int i = 0; (i < 10) && track_size(channel,i) > size_threshold; ++i) {
     tmp = grid_position( fPair( capture_point(channel, i) ) - origin, transform);
-    cout << "looking at " << tmp << " x: " << setw(4) << track_x(channel,i) - origin.x   << endl;
+    //cout << "looking at " << tmp << " x: " << setw(4) << track_x(channel,i) - origin.x   << endl;
     if(track_size(channel,i) < 90
        && (tmp >= iPair(0,0))
        && (tmp < iPair(8,8)) ) {
@@ -83,7 +85,7 @@ Grid capture_grid() {
 
     /* aquire corner_markers */
     for(int i = 0; i < 4; ++i) 
-      corner_marker[i] = capture_point(2,i);
+      corner_marker[i] = capture_point(marker_channel,i);
 
     sort_edges(corner_marker);
 
@@ -110,7 +112,6 @@ Grid capture_grid() {
     // cout << "edge: " << edge << " corner[1] - corner[0]: " << corner_marker[1] - corner_marker[0] <<  endl;
     // cout << "(corner[0] - corner[2]  + corner[1] - corner[3]).transpose();" << (corner_marker[0] - corner_marker[2]  + corner_marker[1] - corner_marker[3]).transpose() << endl;
     if( abs(edge.x) > 2 && abs(edge.y) > 2 ) {
-      cout << "Rotated" << endl;
       float hypotenuse_squared = edge.x * edge.x + edge.y * edge.y;
 
       c = (9.0f * edge.x) / hypotenuse_squared;
@@ -126,9 +127,8 @@ Grid capture_grid() {
     /* compensate for origin offset (markers aren't right on the corner)  */
     origin = fPair(corner_marker[0]) + (edge / 18);
 
-    capture_color(g, origin, 1, transform);
-    //capture_color(g, corner_marker[0], 2, transform);
-
+    capture_color(g, origin, human_channel_A, transform);
+    capture_color(g, origin, human_channel_B, transform);
 
     do {
       sleep(0.25);
@@ -142,7 +142,7 @@ Grid capture_grid() {
     frame_number = track_get_frame();
     frame_attempts = 0;
   }
-
+  g.squelch(2);
   return g;
 }
 

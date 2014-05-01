@@ -33,10 +33,11 @@ int main() {
   string input;
   int x, y;
   Move move;
-  bool is_red_turn = true;
+  bool is_red_turn = true, legal;
 
-  b.push() = Board(State::empty);
-  b().at(7,0) = State::red;
+  b.push() = Board();
+  //b.push() = Board(State::empty);
+  //b().at(0,0) = State::red;
   /* b().place(Board::black, 1,0); */
   /* b().place(Board::black, 3,1); */
 
@@ -59,8 +60,20 @@ int main() {
       move.src = iPair(x,y);
       cin >> x; cin >> y;
       move.dst = iPair(x,y);
+      Board tmp = b();
+      tmp.unconditional_move(move);
 
-      b.push().unconditional_move(move);
+      b().move_fold([&](const Board& bb, const Move&) {
+	  legal = color_equal(State::red, tmp, bb);
+	  return legal;
+	}, static_cast<State>( b().at(move.src) & ~State::king) );
+
+      if(legal)
+	cout <<"Move was legal"<<endl;
+      else
+	cout <<"illegal move" << endl;
+
+      b.push() = tmp;
     }
 
     else if("pdn-move" == input) {
@@ -101,7 +114,6 @@ int main() {
 
       cout << "To\n" << tmp << endl;
       b.push() = tmp;
-
     }
 
     else if("reset" == input) {
@@ -112,78 +124,18 @@ int main() {
       return 0;
     }
 
-    /* else if("play" == input) { */
-    /*   if(is_red_turn) */
-    /* 	move = best_nn(Board::State::red, b()); */
-    /*   else */
-    /* 	move = best_nn(Board::State::black, b()); */
+    else if("play" == input) {
+      cout << "play: \n";
+      cin >> input;
 
-    /*   is_red_turn ^= true; */
-
-    /*   if( move.dst != iPair(-1,-1) ) */
-    /* 	b.push().legal_move( move ); */
-    /* } */
-
-    /* else if("evolve" == input) { */
-    /*   for(int i = 0; i < 1000; ++i) { */
-    /* 	bool is_canidate = false; */
-    /* 	int counter = 0; */
-
-    /* 	for(; counter < 500; ++counter) { */
-    /* 	  is_canidate ^= true; */
-
-    /* 	  if(is_canidate) */
-    /* 	    move = best_nn(Board::State::red, b()); */
-
-    /* 	  else */
-    /* 	    move = canidate_nn(Board::State::black, b()); */
-	
-    /* 	  if( move.dst == iPair(-1,-1) ) */
-    /* 	    break; 		/\* someone lost *\/ */
-
-    /* 	  b().legal_move(move); */
-    /* 	}  */
-
-    /* 	cout << "Run " << i << ": "; */
-
-    /* 	if(is_canidate) { */
-    /* 	  cout << "Best #" << best_index << " won "; */
-
-    /* 	  learner.bump_up(best_index); */
-    /* 	  learner.bump_down(canidate_index); */
-    /* 	} */
-
-    /* 	else { */
-    /* 	  cout << "Canidate #" << canidate_index << " won"; */
-
-    /* 	  learner.bump_up(canidate_index); */
-    /* 	  learner.bump_down(best_index); */
-
-    /* 	  best_index = canidate_index; */
-    /* 	  best_nn = canidate_nn; */
-    /* 	} */
-
-    /* 	cout << " in " << counter << " turns" << endl; */
-
-
-    /* 	b() = Board(); */
-
-    /* 	/\* bonus for winning quickly *\/ */
-    /* 	if(counter < 200) { */
-    /* 	  learner.bump_up(best_index); */
-    /* 	} */
-
-    /* 	learner.mutate(); */
-
-    /* 	canidate_index = learner.sample(); */
-    /* 	while(canidate_index == best_index) */
-    /* 	  canidate_index = learner.sample(); */
-
-    /* 	canidate_nn = learner.at(canidate_index); */
-    /*   } */
-
-    /*   best_nn.branch_net.print_theta(cout) << endl; */
-    /* } */
+      if(input == "red")
+    	move = simple_ai(State::red, b());
+      else
+    	move = simple_ai(State::black, b());
+      //cout << move << endl;
+      if( move.dst != iPair(-1,-1) )
+      	b.push().legal_move( move );
+    }
 
     else if("undo" == input) {
       b.undo();

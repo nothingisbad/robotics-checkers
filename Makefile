@@ -34,8 +34,10 @@ gl_checkers: *.hpp *.cpp
 	$(CXX) -o gl_checkers gl_checkers.cpp -lGL -lGLU `sdl2-config --cflags --libs`
 
 # ../userlib/tracklib/tracklib.o
+CURRENT_EXEC = main.cpp
+#CURRENT_EXEC = test_movement.cpp
 cbc_executable: *.hpp *.cpp
-	$(CROSS_CXX) $(CBC_INCLUDE) -o cbc_executable test_movement.cpp $(CROSS_LIBS) 
+	$(CROSS_CXX) $(CBC_INCLUDE) -o cbc_executable $(CURRENT_EXEC) $(CROSS_LIBS) 
 
 
 TARGETS = cbc_executable test_checkers gl_checkers test_ai test_vision test_grid test_move_fold

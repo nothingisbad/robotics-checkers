@@ -42,13 +42,11 @@ struct Move {
      capture: if a jump occured, capture is the location of the
         captured peice.  Otherwise capture should be iPair(-1,-1)
    */
-  iPair src, dst, capture;
-
-  bool is_capture() const { return capture.x != -1; }
+  iPair src, dst;
 
   Move() = default;
-  Move(const iPair& s, const iPair& d) : src(s), dst(d), capture(-1,-1) {}
-  Move(const iPair& s, const iPair& d, const iPair& c) : src(s), dst(d), capture(c) {}
+  Move(const iPair& s, const iPair& d) : src(s), dst(d) {}
+  Move(const iPair& s, const iPair& d, const iPair& c) : src(s), dst(d) {}
 };
 
 std::ostream& operator<<(std::ostream &out, const Move &m) {
@@ -101,32 +99,32 @@ public:
   static const int _rows = 8
     , _columns = 4;
 
+  iPair jump_dst(const Move& m) const {
+    iPair capture;
+    if(m.src.x < m.dst.x)
+      capture.x = m.dst.x + 1;
+    else
+      capture.x = m.dst.x - 1;
+
+    if( m.src.y == m.dst.y )
+      /* if the source row is even, jump right */
+      capture.y = m.dst.y + ((m.src.x % 2) == 0 ? 1 : -1);
+    else
+      capture.y = m.dst.y;
+
+    return capture;
+  }
+
+  bool is_jump_valid(const Move &m) const {
+    iPair capture = jump_dst(m);
+    bool value = in_bounds(capture) && opposites(m.dst, m.src) && is(Empty, at(capture));;
+    /* if (value) */
+    /*   std::cout << "Valid jump: " << m << std::endl; */
+    return value;
+  }
 private:
   State _board[_rows][_columns];
 
-  /**
-   * The input move should have the moving piece in m.src and
-   * the peice to be jumped in m.capture.  m.dst will be set up
-   * by this function.
-   * 
-   * @param other:
-   * @param m: the move src and caputre
-   * @return: false if jump could not be carried out (ie due to obstructing peice).
-   */
-  bool jump_capture(Move &m) const {
-    if(m.src.x < m.capture.x)
-      m.dst.x = m.capture.x + 1;
-    else
-      m.dst.x = m.capture.x - 1;
-
-    if( m.src.y == m.capture.y )
-      /* if the source row is even, jump right */
-      m.dst.y = m.capture.y + ((m.src.x % 2) == 0 ? 1 : -1);
-    else
-      m.dst.y = m.capture.y;
-
-    return is(Empty, at(m.dst));
-  }
 public:
   /****************************************************/
   /*  __  __                                     _    */
@@ -144,10 +142,12 @@ public:
   void unconditional_move(const Move& m) { unconditional_move(m.src, m.dst);  }
 
   /* perform a move and carries out the capture/makes king */
-  void legal_move(const Move& m) {
+  void legal_move(Move m) {
     /* Jump */
-    if( m.is_capture() )
-      at(m.capture) = State::empty;
+    if( opposites(m.src, m.dst) ) {
+      at(m.dst) = State::empty;
+      m.dst = jump_dst(m);
+    }
 
     /* Gets piece to determine color  */
     State piece = at(m.src);
@@ -174,12 +174,8 @@ public:
 
     /* handle jump: */
     if( opposites(src,dst) ) {
-      Move m(src,iPair(),dst);
- 
       std::cout << "Canidate jump " << src << " -> " << dst << std::endl;
-      if( jump_capture(m) )
-	legal_move(m);
-      else
+      if( !is_jump_valid( Move(src,dst) ) )
 	cout << "Illegal move" << endl;
     }
 
@@ -229,7 +225,7 @@ public:
     return State::red;
   }
 
-  bool opposites(iPair a, iPair b) {
+  bool opposites(iPair a, iPair b) const {
     return !is(Empty, at(a) ) && !is(Empty, at(b) )
       && ((at(a) & red) != (at(b) & red));
   }
@@ -274,6 +270,23 @@ public:
   
   bool in_bounds(const iPair &p) const {
     return p < iPair(_rows, _columns) && p >= iPair(0,0);
+  }
+
+  int piece_count(State state) const {
+    int mag, sum;
+    for(int i = 0; i < _rows; ++i) {
+      for(int j = 0; j < _columns; ++j) {
+	if(is(King, at(i,j)))
+	  mag = 1.3;
+	else
+	  mag = 1;
+
+	if(has_same(state, at(i,j)))
+	  sum += mag;
+	else
+	  sum -= mag;
+      }}
+    return sum;
   }
 
   /****************************************************************/
@@ -338,7 +351,6 @@ public:
   void move_fold(const FnType fn, State color) const {
     using namespace std;
     State other = opponent_color(color);
-    Move move;
     Board post_move = *this;
 
     int row_offset
@@ -364,14 +376,14 @@ public:
        I'm acting on (the call stack will deal with allocation) */
     auto jump = [&](const Board* base, const Move& initial_move, const iPair& src, const iPair& dst) -> bool {
       if( in_bounds(dst) && has_same(other, base->at(dst) ) ) {
-	Move move = Move( src, iPair(), dst );
+	Move move = Move( src, dst );
 
-	if( base->jump_capture(move)) {
+	if( base->is_jump_valid(move)) {
 	  Board tmp = *base;
 	  tmp.legal_move(move);
 
 	  if( !jump_check(&tmp, initial_move, move.dst) )
-	    if( (short_circut = fn(tmp, initial_move)) ) return true;
+	    short_circut = fn(tmp, initial_move);
 
 	  return true;
 	}}
@@ -400,7 +412,7 @@ public:
     auto do_move = [&](iPair src, iPair dst) -> bool {
       if( in_bounds(dst) && is(Empty, at(dst) ) ) {
 	post_move.unconditional_move( Move( src, dst ) );
-	short_circut = fn( post_move, move );
+	short_circut = fn( post_move, Move( src, dst ) );
 	post_move = *this;
 	return true;
       }
@@ -413,10 +425,9 @@ public:
       dst_row = i + row_offset;
 
       for(int j = 0; j < Board::_columns; ++j) {
-	if( has_same(color, at(i,j) ) ) {
+	src = iPair(i,j);
+	if( has_same(color, at(src) ) ) {
 	  if( is(King, at(src)) ) {
-	    src = iPair(i,j);
-
 	    dst = src + iPair(-row_offset, 0);
 	    did_jump |= jump(this, Move(src,dst), src, dst);
 	    if(short_circut) return;
@@ -436,7 +447,7 @@ public:
 	}}}
 
     /* if I did jump, none of the other moves are legal to take so return now. */
-    if(did_jump) return;
+    if(did_jump || short_circut) return;
 
     /* If I didn't jump, check the free squares */
     for(int i = 0; i < Board::_rows; ++i) {
@@ -572,7 +583,7 @@ bool color_equal(State color, Board b1, Board b2) {
     for(int j=0; j < Board::_columns; j++) {
       iPair a(i,j);
       if ( (has_same(color, b1.at(a)) && !has_same(color, b2.at(a)))
-	   || has_same(color, b2.at(a)) )
+	   || (has_same(color, b2.at(a)) && !has_same(color, b1.at(a))) )
 	return false;
     }
   }

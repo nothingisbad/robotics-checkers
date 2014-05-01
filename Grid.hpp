@@ -52,7 +52,7 @@ public:
     Grid g;
     for( int i=0; i<_n; ++i) {
       for (int j=0; j<_m; ++j) {
-	g.at(_n-j-1, i) = at(i,j);
+	g.at(j, _n - i - 1) = at(i,j);
       }
     }
     return g;

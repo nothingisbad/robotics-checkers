@@ -12,10 +12,7 @@
 
 namespace checkers_AI {
   int weight_move(State color, const Board& b, const Move& m) {
-    if( m.is_capture() )
-      return 1;
-
-    return 0;
+    return b.piece_count(color);
   }
     
   /**
@@ -27,7 +24,7 @@ namespace checkers_AI {
   int compair(int depth, State color
 	      , Board b) {
     using namespace std;
-
+    // cout << ".";
     int sum = 0;
     State opponent_color = b.opponent_color(color);
 
