@@ -35,7 +35,7 @@ gl_checkers: *.hpp *.cpp
 
 # ../userlib/tracklib/tracklib.o
 cbc_executable: *.hpp *.cpp
-	$(CROSS_CXX) $(CBC_INCLUDE) -o cbc_executable vision.cpp $(CROSS_LIBS) 
+	$(CROSS_CXX) $(CBC_INCLUDE) -o cbc_executable test_movement.cpp $(CROSS_LIBS) 
 
 
 TARGETS = cbc_executable test_checkers gl_checkers test_ai test_vision test_grid test_move_fold

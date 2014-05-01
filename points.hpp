@@ -63,10 +63,10 @@ public:
   bool operator!=(const Pair& p) const { return !(*this == p); }
 
   Num& row() { return x; }
-  Num& column() { return x; }
+  Num& column() { return y; }
 
   Num row() const { return x; }
-  Num column() const { return x; }
+  Num column() const { return y; }
 
   Pair<Num> transpose() const {
     std::swap(x,y);

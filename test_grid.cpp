@@ -12,9 +12,9 @@
 using namespace std;
 
 int main() {
-  Board b(Board::empty);
-  b.place(Board::red, 0,0);
-  b.place(Board::red, 2,0);
+  Board b(State::empty);
+  b.at(0,0) = State::red;
+  b.at(2,0) = State::red;
 
   Grid g(b);
 
@@ -23,6 +23,8 @@ int main() {
   ++g.at(6,6);
 
   cout << g << endl;
+
+  cout << g.rotate() << endl;
 
   b = Board(g);
 

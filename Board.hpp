@@ -33,18 +33,6 @@ bool even(Num i) {
   return i % 2 == 0;
 }
 
-bool color_equal(Board::State color, Board b1, Board b2) {
-  for(int i=0; i < Board::_rows; i++) {
-    for(int j=0; j < Board::_columns; j++) {
-      iPair a(i,j);
-      if ( (has_same(color, b1.at(a)) && !has_same(color, b2.at(a)))
-	   || has_same(color, b2.at(a)) )
-	return false;
-    }
-  }
-  return true;
-}
-
 /**
  * Three pairs currently represent a move
  */
@@ -205,18 +193,17 @@ public:
     Board store_move;
     cout << "Move " << nth_move << endl;
 
-    move_fold( [&](const Board& b) -> void  {
+    move_fold( [&](const Board& b, const Move&) -> bool  {
 	using namespace std;
-	if(nth_move < 0)
-	  return;
-
 	if( nth_move == 0 ) {
 	  cout << "Stored: " << endl;
 	  b.print();
 	  store_move = b;
+	  return true;
 	}
 
 	--nth_move;
+	return false;
       }, color);
 
     return store_move;
@@ -341,7 +328,7 @@ public:
    * Folds fn across all availible moves for given color.  It's
    * assumed fn will be bound to whatever data it is trying to accumulate.
    * 
-   * fn is of type void (*fn)(const Move&)
+   * fn is of type bool (*fn)(const Board&, const Move&)
    * 
    * @param fn: function being folded
    * @param color: type who's moves are being evaluated
@@ -358,7 +345,7 @@ public:
       , column_offset
       , dst_row;
 
-    iPair src;
+    iPair src, dst;
 	
     /* red goes low to high, black high to low */
     if(color == red)
@@ -366,43 +353,54 @@ public:
     else
       row_offset = -1;
 
-    bool did_jump = false;
+    /* the obvious way to handle short circuts is with a throw, but it looks like exception handling is
+       wonky on the arm processors, and I don't have time to try a few things right now. */
+    bool did_jump = false
+      , short_circut = false;
 
-    std::function<bool (const Board *tmp, const iPair&)> jump_check;
+    std::function<bool (const Board *tmp, const Move&, const iPair&)> jump_check;
 
     /* multiple jumps are treated recursively, so I need to pass in which board
        I'm acting on (the call stack will deal with allocation) */
-    auto jump = [&](const Board* base, const iPair& src, const iPair& dst) -> bool {
+    auto jump = [&](const Board* base, const Move& initial_move, const iPair& src, const iPair& dst) -> bool {
       if( in_bounds(dst) && has_same(other, base->at(dst) ) ) {
 	Move move = Move( src, iPair(), dst );
 
 	if( base->jump_capture(move)) {
 	  Board tmp = *base;
 	  tmp.legal_move(move);
-	  fn( tmp );
-	  jump_check(&tmp, move.dst);
+
+	  if( !jump_check(&tmp, initial_move, move.dst) )
+	    if( (short_circut = fn(tmp, initial_move)) ) return true;
 
 	  return true;
 	}}
       return false;
     };
 
-    jump_check = [&](const Board *tmp, const iPair& src) -> bool {
+    jump_check = [&](const Board *tmp, const Move& initial_move, const iPair& src) -> bool {
       bool did_jump = false;
       if( is(King, tmp->at(src)) ) {
-	did_jump |= jump(tmp, src, src + iPair(-row_offset, 0));
-	did_jump |= jump(tmp, src, src + iPair(-row_offset, column_offset));
+	did_jump |= jump(tmp, initial_move, src, src + iPair(-row_offset, 0));
+	if(short_circut) return false;
+
+	did_jump |= jump(tmp, initial_move, src, src + iPair(-row_offset, column_offset));
+	if(short_circut) return false;
       }
  
-      did_jump |= jump(tmp, src, src + iPair(row_offset, 0));
-      did_jump |= jump(tmp, src, src + iPair(row_offset, column_offset));
+      did_jump |= jump(tmp, initial_move, src, src + iPair(row_offset, 0));
+      if(short_circut) return false;
+
+      did_jump |= jump(tmp, initial_move, src, src + iPair(row_offset, column_offset));
+      if(short_circut) return false;
+
       return did_jump;
     };
 
     auto do_move = [&](iPair src, iPair dst) -> bool {
       if( in_bounds(dst) && is(Empty, at(dst) ) ) {
 	post_move.unconditional_move( Move( src, dst ) );
-	fn( post_move );
+	short_circut = fn( post_move, move );
 	post_move = *this;
 	return true;
       }
@@ -415,9 +413,27 @@ public:
       dst_row = i + row_offset;
 
       for(int j = 0; j < Board::_columns; ++j) {
-	if( has_same(color, at(i,j) ) )
-	  did_jump |= jump_check(this, iPair(i,j));
-      }}
+	if( has_same(color, at(i,j) ) ) {
+	  if( is(King, at(src)) ) {
+	    src = iPair(i,j);
+
+	    dst = src + iPair(-row_offset, 0);
+	    did_jump |= jump(this, Move(src,dst), src, dst);
+	    if(short_circut) return;
+
+	    dst = src + iPair(-row_offset, column_offset);
+	    did_jump |= jump(this, Move(src,dst), src, dst);
+	    if(short_circut) return;
+	  }
+ 
+	  dst = src + iPair(row_offset, 0);
+	  did_jump |= jump(this, Move(src,dst), src, dst);
+	  if(short_circut) return;
+
+	  dst = src + iPair(row_offset, column_offset);
+	  did_jump |= jump(this, Move(src,dst), src, dst);
+	  if(short_circut) return;
+	}}}
 
     /* if I did jump, none of the other moves are legal to take so return now. */
     if(did_jump) return;
@@ -432,11 +448,17 @@ public:
 	  src = iPair(i,j);
 	  if( is(King, at(src) ) ) {
 	    do_move(src, iPair(i - row_offset, j));
+	    if(short_circut) return;
+
 	    do_move(src, iPair(i - row_offset, j + column_offset));
+	    if(short_circut) return;
 	  }
 
 	  do_move(src, iPair(dst_row, j));
+	  if(short_circut) return;
+
 	  do_move(src, iPair(dst_row, j + column_offset));
+	  if(short_circut) return;
 	}}}
   }
                    
@@ -545,6 +567,17 @@ iPair canonical2diag(int i) {
   return iPair( ((31 - i) / Board::_columns), i % Board::_columns);
 }
 
+bool color_equal(State color, Board b1, Board b2) {
+  for(int i=0; i < Board::_rows; i++) {
+    for(int j=0; j < Board::_columns; j++) {
+      iPair a(i,j);
+      if ( (has_same(color, b1.at(a)) && !has_same(color, b2.at(a)))
+	   || has_same(color, b2.at(a)) )
+	return false;
+    }
+  }
+  return true;
+}
 
 /***********************************************/
 /*  _   _           _         _     _     _    */

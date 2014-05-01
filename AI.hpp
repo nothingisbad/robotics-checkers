@@ -33,10 +33,11 @@ namespace checkers_AI {
 
     if(depth <= 1) return 0;
 
-    b.move_fold([&](Board b) -> void {
+    b.move_fold([&](Board b, const Move&) -> bool {
 	sum -= compair( depth - 1
 			  , opponent_color
 			, b);
+	return false;
       }, opponent_color);
 
       return sum;
@@ -45,18 +46,19 @@ namespace checkers_AI {
 
 class AI {
   public:
-    Board operator()(State color, const Board& b) {
+    Move operator()(State color, const Board& b) {
       using namespace std;
       int best_weight = -100;
-      Board best_move;
+      Move best_move;
 
-      b.move_fold( [&](Board bb) -> void {
+      b.move_fold( [&](Board bb, const Move& m) -> bool {
 	  int weight = checkers_AI::compair(3, color, bb);
 
 	  if( weight > best_weight ) {
 	    best_weight = weight;
-	    best_move = bb;
+	    best_move = m;
 	  }
+	  return false;
 	} , color );
 
       return best_move;
