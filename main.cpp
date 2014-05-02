@@ -20,7 +20,7 @@ int main() {
   AI ai;
   { Sling arm; }
 
-  cout << "logical_board:\n" << logical_board;
+  //cout << "logical_board:\n" << logical_board;
 
   vision_board = Board( capture_grid().rotate() );
   cout << "vision_board\n" << vision_board << "\n";
@@ -41,7 +41,7 @@ int main() {
 	sleep(0.1);
       } else break;
     }
-    cout << "Human moved\n" << logical_board << endl;;
+    //cout << "Human moved\n" << logical_board << endl;;
 
     move = ai(State::black, logical_board);
 
@@ -51,12 +51,10 @@ int main() {
 	  Sling arm;
 	  arm().remove_piece(move.dst);
 	}
-	move.dst = logical_board.jump_dst(move);
+
 	{
 	  Sling arm;
-
-	  arm().reset();
-	  arm().execute_move(move);
+	  arm().execute_move( Move(move.src, logical_board.jump_dst(move)));
 	}
 
 	logical_board.legal_move(move);

@@ -49,7 +49,6 @@ iPair capture_point(int channel, int index) {
 	       , track_y(channel, index));
 }
 
-/* damn.  If only we had monads. */
 iPair grid_position(const fPair& pixel, const Transform& transform) {
   int col, row;
     
@@ -63,7 +62,7 @@ void capture_color(Grid &g, const fPair& origin, int channel, const Transform& t
   iPair tmp;
   for(int i = 0; (i < 10) && track_size(channel,i) > size_threshold; ++i) {
     tmp = grid_position( fPair( capture_point(channel, i) ) - origin, transform);
-    //cout << "looking at " << tmp << " x: " << setw(4) << track_x(channel,i) - origin.x   << endl;
+
     if(track_size(channel,i) < 90
        && (tmp >= iPair(0,0))
        && (tmp < iPair(8,8)) ) {
@@ -109,11 +108,13 @@ Grid capture_grid() {
 
     float c, s;
 
-    // cout << "edge: " << edge << " corner[1] - corner[0]: " << corner_marker[1] - corner_marker[0] <<  endl;
-    // cout << "(corner[0] - corner[2]  + corner[1] - corner[3]).transpose();" << (corner_marker[0] - corner_marker[2]  + corner_marker[1] - corner_marker[3]).transpose() << endl;
     if( abs(edge.x) > 2 && abs(edge.y) > 2 ) {
       float hypotenuse_squared = edge.x * edge.x + edge.y * edge.y;
 
+      /* I can get the position of one blob relitive to the origin into the rotated frame with the translation matrix,
+	 then I divide that by edge-length/9 (since the edge markers are each 1/2 square away from the actual board)
+	 to get the position of the square it's occupying.  If I combine the two steps I don't have to take a square root
+	 to compute the trig functions */
       c = (9.0f * edge.x) / hypotenuse_squared;
       s = (9.0f * edge.y) / hypotenuse_squared;
     } else {

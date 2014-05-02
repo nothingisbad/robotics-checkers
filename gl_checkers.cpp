@@ -357,14 +357,14 @@ int main( int argc, char **argv ) {
 	    if( selector.selected() && (iPair(i,j) == selector.src() ) )
 	      color(blue);
 	      
-	    else if( board.is(Board::Red,i, j) )
-	      color(red);
+	    else if( is(Red, board.at(i, j) ) )
+	      color(simple_colors::red);
 
-	    else if( board.is(Board::Black,i, j) )
-	      color(green);
+	    else if( is(Black, board.at(i, j)) )
+	      color(simple_colors::green);
 
 	    else
-	      color(black);
+	      color(simple_colors::black);
 
 	    draw_square();
 	  }
@@ -390,7 +390,7 @@ int main( int argc, char **argv ) {
       /* AI's move */
       if( AIs_turn && play_button.playP()
 	  ) {
-	board.legal_move( ai(Board::State::black, board) );
+	board.legal_move( ai(State::black, board) );
 	
 	AIs_turn = false;
       }

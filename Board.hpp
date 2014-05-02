@@ -272,8 +272,8 @@ public:
     return p < iPair(_rows, _columns) && p >= iPair(0,0);
   }
 
-  int piece_count(State state) const {
-    int mag, sum;
+  float piece_count(State state) const {
+    float mag, sum;
     for(int i = 0; i < _rows; ++i) {
       for(int j = 0; j < _columns; ++j) {
 	if(is(King, at(i,j)))

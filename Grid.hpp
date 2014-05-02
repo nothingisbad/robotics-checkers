@@ -70,6 +70,7 @@ public:
 	else
 	  at( diag2abs(iPair(i,j)) ) = is(Red, b.at(i,j)) ? 1 : -1;
       }}}
+
   /* Putting (0,0) at the bottom left */
   std::ostream& print(std::ostream &out) const {
     for(int i = 0; i < _m; ++i)
@@ -101,8 +102,6 @@ Board::Board(const Grid& g) {
 	at(i,j) = State::empty;
       else
 	at(i,j) = grid_value > 0 ? State::red : State::black;
-    }
-  }
-}
+    }}}
 
 #endif

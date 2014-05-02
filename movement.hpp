@@ -304,9 +304,11 @@ public:
 
     move_to( iPair(3,0) );
     put_down_all();
+    nap();
+    reset();
   }
 
-  void execute_move(Move &m) {
+  void execute_move(const Move &m) {
     board_move(m.src);
     pick_up_all();
 
