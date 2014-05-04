@@ -1,8 +1,9 @@
 #ifndef BOARD_HPP
 #define BOARD_HPP
 /**
+ * Ryan Domigan <ryan_domigan@sutdents@uml.edu>
+ * Kaitlyn Carcia <kate.carcia@gmail.com>
  * @file /home/ryan/uml/robotics/checkers/checkers.h
- * @author Ryan Domigan <ryan_domigan@sutdents@uml.edu>
  * Created on Mar 05, 2014
  *
  * A basic checkers game board, with no logic to speak of.
@@ -27,6 +28,7 @@
 /* |_||_\___|_| .__/\___|_| /__/ */
 /*            |_|                */
 /*********************************/
+/* Return true if given number is even */
 template<class Num>
 bool even(Num i) {
   static_assert( std::is_integral<Num>::value, "even is only defined for integral numbers." );
@@ -38,9 +40,9 @@ bool even(Num i) {
  */
 struct Move {
   /* src: the beginning position of the piece
-     dst: the destination of the piece
-     capture: if a jump occured, capture is the location of the
-        captured peice.  Otherwise capture should be iPair(-1,-1)
+   * dst: the destination of the piece
+   * capture: if a jump occured, capture is the location of the
+   * captured peice; otherwise capture should be iPair(-1,-1)
    */
   iPair src, dst;
 
@@ -49,12 +51,15 @@ struct Move {
   Move(const iPair& s, const iPair& d, const iPair& c) : src(s), dst(d) {}
 };
 
+/* Overload << operator to print a move */
 std::ostream& operator<<(std::ostream &out, const Move &m) {
   return out << m.src << "->" << m.dst;
 }
 
+/* GRID CLASS */
 class Grid;
 
+/* Deines an empty, black, red (aka red and yellow piece set), and king state */
 enum State {  empty = 0, black = 1, red = 2, king = 4 };
   
 struct EmptyType { static bool is(const State &s) { return s == empty; } };
@@ -69,6 +74,7 @@ const static RedType   Red;
 const static KingType  King;
 const static PawnType  Pawn;
 
+/* Determines if object of given class is the color given */
 template<class T>
 static bool is(T, State color) { return T::is(color);  }
 
@@ -77,8 +83,8 @@ static bool is(T, U, State color) { return T::is(color) && U::is(color);  }
 
 /**
  * Returns true if testing has the attribute state,
- * ie if state is red, has_same will return true if testing
- *    is a red king or a red pawn.
+ * i.e. if state is red, has_same will return true if testing
+ * is a red king or a red pawn.
  *    
  * @param state: state to test for
  * @param testing: state being tested
@@ -94,11 +100,15 @@ bool has_same(State state, State testing) { return (testing & state) == state; }
 /* | |_) | (_) | (_| | | | (_| | */
 /* |____/ \___/ \__,_|_|  \__,_| */
 /*********************************/
+/* BOARD CLASS
+ * Board contains all playable squares */
 class Board {
 public:
   static const int _rows = 8
     , _columns = 4;
 
+  /* Given a move, this function will execute the move
+   * and return the capture */
   iPair jump_dst(const Move& m) const {
     iPair capture;
     if(m.src.x < m.dst.x)
@@ -115,6 +125,7 @@ public:
     return capture;
   }
 
+  /* Determines if the jump is valid; return true if it is */
   bool is_jump_valid(const Move &m) const {
     iPair capture = jump_dst(m);
     bool value = in_bounds(capture) && opposites(m.dst, m.src) && is(Empty, at(capture));;
@@ -133,12 +144,14 @@ public:
   /* | |  | | (_) \ V /  __/ | | | | |  __/ | | | |_  */
   /* |_|  |_|\___/ \_/ \___|_| |_| |_|\___|_| |_|\__| */
   /****************************************************/
+  /* Sets the dest equal to the src
+   * Sets the src to an empty state */
   void unconditional_move(const iPair& src, const iPair& dst) {
     at(dst) = at(src);
     at(src) = State::empty;
   }
 
-  /* unconditional move */
+  /* unconditional move give a move */
   void unconditional_move(const Move& m) { unconditional_move(m.src, m.dst);  }
 
   /* perform a move and carries out the capture/makes king */
@@ -152,13 +165,18 @@ public:
     /* Gets piece to determine color  */
     State piece = at(m.src);
 
-    /* yellow checker */
+    /* The follow else ladder makes a checker a king.
+     * However, the robot does not execute this movement; the human will have to
+     * king the piece. The robot, however, *should* internally recognize the piece
+     * as a king */
+      
+    /* Black checker */
     if(piece == State::black) {
       if (m.dst.row() == 0) { /* black checker is at opposite end of board */
 	at(m.src) = static_cast<State>(piece | State::king); /* marks checker as king */
       }
 
-      /* red checker */
+      /* Yellow/red checkers */
     } else if (piece == State::red) {
       if (m.dst.row() == 7) { /* red checker is at opposite end of board */
 	at(m.src) = static_cast<State>(piece | State::king); /* marks checker as king */
@@ -225,6 +243,7 @@ public:
     return State::red;
   }
 
+  /* Given 2 iPairs, returns true if the pieces are opposite colors */
   bool opposites(iPair a, iPair b) const {
     return !is(Empty, at(a) ) && !is(Empty, at(b) )
       && ((at(a) & red) != (at(b) & red));
@@ -578,6 +597,8 @@ iPair canonical2diag(int i) {
   return iPair( ((31 - i) / Board::_columns), i % Board::_columns);
 }
 
+/* Deteremines if the color of particular pieces are positioned
+ * the same on two boards */
 bool color_equal(State color, Board b1, Board b2) {
   for(int i=0; i < Board::_rows; i++) {
     for(int j=0; j < Board::_columns; j++) {

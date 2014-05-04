@@ -1,13 +1,7 @@
-
 /**
- * @file /home/ryan/uml/robotics/checkers/test_move_fold.cpp
- * @author Ryan Domigan <ryan_domigan@sutdents@uml.edu>
- * Created on Apr 22, 2014
- */
-
-/**
+ * Ryan Domigan <ryan_domigan@sutdents@uml.edu>
+ * Kaitlyn Carcia <kate.carcia@gmail.com>
  * @file /home/ryan/uml/robotics/checkers/test_checkers.c
- * @author Ryan Domigan <ryan_domigan@sutdents@uml.edu>
  * Created on Mar 05, 2014
  */
 
@@ -26,12 +20,14 @@ int main() {
   Move move;
   Board b = Board(State::empty);
 
+  /* Set specific coordinates on board */
   b.at(0,0) = State::red;
   b.at(1,0) = State::black;
   b.at(3,1) = State::black;
 
   cout << "Begin:\n" << b << endl;
   
+  /* Make move on board if legal */
   cout << "Moves:\n" << b << endl;
   b.move_fold([&](const Board& b, const Move& m) {
       cout << m << "\n" << b << endl;

@@ -1,9 +1,12 @@
 /**
+ * Ryan Domigan <ryan_domigan@sutdents@uml.edu>
+ * Kaitlyn Carcia <kate.carcia@gmail.com>
  * @file /home/ryan/uml/robotics/checkers/test_grid.cpp
- * @author Ryan Domigan <ryan_domigan@sutdents@uml.edu>
  * Created on Apr 23, 2014
  *
- * Seems to be an off by one error in the grid; let's try some things out.
+ * Verifies board/grid placement is accurate.
+ * Board contains all playable squares,
+ * Grid contains all squares.
  */
 
 #include "./Grid.hpp"
