@@ -1,7 +1,8 @@
 
 /**
+ * Ryan Domigan <ryan_domigan@sutdents@uml.edu>
+ * Kaitlyn Carcia <kate.carcia@gmail.com>
  * @file /home/ryan/uml/robotics/checkers/main.cpp
- * @author Ryan Domigan <ryan_domigan@sutdents@uml.edu>
  * Created on Apr 30, 2014
  *
  * Main loop, should tie together the AI, vision and movement
@@ -65,6 +66,7 @@ int main() {
       {
 	Sling arm;
 
+    /* Arm at 0,0 and then arm executes move */
 	arm().reset();
 	arm().execute_move(move);
       }

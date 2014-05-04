@@ -1,6 +1,7 @@
 /**
+ * Ryan Domigan <ryan_domigan@sutdents@uml.edu>
+ * Kaitlyn Carcia <kate.carcia@gmail.com>
  * @file /home/ryan/uml/robotics/checkers/test_checkers.c
- * @author Ryan Domigan <ryan_domigan@sutdents@uml.edu>
  * Created on Mar 05, 2014
  */
 

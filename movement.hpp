@@ -1,13 +1,15 @@
 #ifndef MOVEMENT_HPP
 #define MOVEMENT_HPP
 /**
+ * Ryan Domigan <ryan_domigan@sutdents@uml.edu>
+ * Kaitlyn Carcia <kate.carcia@gmail.com>
  * @file /home/ryan/uml/robotics/checkers/movement.hpp
- * @author Ryan Domigan <ryan_domigan@sutdents@uml.edu>
  * Created on Apr 04, 2014
  *
  * Move and read position of the gantry arm
  */
 
+/* includes */
 #include <cbc.h>
 #include <cstdlib>
 
@@ -202,12 +204,14 @@ public:
 private:
   static void nap() { sleep(0.2); }
   
+  /* controls hand - open, close, raise, lower */
   void open_hand() { set_servo_position(servo_grip, 1680);  }
   void close_hand() { set_servo_position(servo_grip, 723);  }
 
   static void raise_hand() { set_servo_position(servo_elevation, 1987);  }
   void lower_hand() { set_servo_position(servo_elevation, 1031); }
 
+  /* sets hand position */
   void position_hand(int i) {
     set_servo_position(servo_elevation
 		       , i + get_servo_position(servo_elevation));
@@ -249,6 +253,7 @@ public:
     run_loop();
   }
 
+  /* Move arm based on ipair */
   void board_move(iPair pos) {
     std::cout << "Going to " << pos;
     pos = iPair(7 - pos.x, 2 * pos.y + (even(pos.x) ? 1 : 2)); 
@@ -297,6 +302,7 @@ public:
     close_hand();
   }
 
+  /* Remove piece from board - i.e. jumping */
   void remove_piece(const iPair& capture) {
     std::cout << "Taking ";
     board_move(capture);
@@ -307,7 +313,8 @@ public:
     nap();
     reset();
   }
-
+ 
+  /* Given move, execute it */
   void execute_move(const Move &m) {
     board_move(m.src);
     pick_up_all();

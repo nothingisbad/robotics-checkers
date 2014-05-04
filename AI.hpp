@@ -1,8 +1,9 @@
 #ifndef AI_HPP
 #define AI_HPP
 /**
+ * Ryan Domigan <ryan_domigan@sutdents@uml.edu>
+ * Kaitlyn Carcia <kate.carcia@gmail.com>
  * @file /home/ryan/uml/robotics/checkers/AI.hpp
- * @author Ryan Domigan <ryan_domigan@sutdents@uml.edu>
  * Created on Mar 31, 2014
  *
  * A checkers playing AI.
@@ -12,14 +13,13 @@
 
 namespace checkers_AI {
   /**
-   * Computes the weight of a move.  For a proper MinMax, each layer should be returning the weight value only of the best move from that
+   * Computes the "weight" of a move.  For a proper MinMax, each layer should be returning the weight value only of the best move from that
    * position, but summing them together was a little simpler.  It's been doing fine against amateurs, but it will take a move which mostly
    * positive branches, even if there's a chance of catastrophe on that branch.  
    */
   float compair(int depth, int jump_bonus, State color
 	      , Board b) {
     using namespace std;
-    // cout << ".";
     
     float weight = b.piece_count(color)
       , sum = weight;
@@ -44,9 +44,10 @@ namespace checkers_AI {
   }
 }
 
-/* The AI wrapper.  I thought it would have more internal state, it could have been a simple function. */
+/* The AI wrapper
+ * Side note: I thought it would have more internal state, it could have been a simple function */
 struct AI {
-  /* Given a color and a board, return the best move for that color. */
+  /* Given a color and a board, return the best move for that colored piece. */
   Move operator()(State color, const Board& b) {
     using namespace std;
     int best_weight = -100;
